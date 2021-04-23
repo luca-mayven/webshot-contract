@@ -3,7 +3,6 @@ import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
 //import FungibleToken from 0x9a0766d93b6608b7
 //import FUSD from 0xe223d8a629e49c68
-import Content from "./Content.cdc"
 
 /*
 
@@ -63,11 +62,11 @@ pub contract Webshot: NonFungibleToken {
         pub let imgUrl: String
 
         init(
-            name: String, 
-            url: String, 
+            name: String,
+            url: String,
             owner: String,
-            ownerAddress:Address, 
-            description: String, 
+            ownerAddress:Address,
+            description: String,
             date: String,
             ipfs: String,
             content: String,
@@ -85,7 +84,7 @@ pub contract Webshot: NonFungibleToken {
     }
 
     pub struct Royalty{
-        pub let wallet: Capability<&{FungibleToken.Receiver}> 
+        pub let wallet: Capability<&{FungibleToken.Receiver}>
         pub let cut: UFix64
 
         init(wallet: Capability<&{FungibleToken.Receiver}>, cut: UFix64 ){
@@ -97,14 +96,14 @@ pub contract Webshot: NonFungibleToken {
     pub resource NFT: NonFungibleToken.INFT, Public {
         pub let id: UInt64
         pub let metadata: Metadata
-        pub let royaltyOwner: {String: Royalty}
-        pub let royaltyMarket: {String: Royalty}
+        pub let royaltyOwner: Royalty
+        pub let royaltyMarket: Royalty
 
         init(
-            initID: UInt64, 
+            initID: UInt64,
             metadata: Metadata,
-            royaltyOwner:{String: Royalty},
-            royaltyMarket:{String: Royalty}) {
+            royaltyOwner: Royalty,
+            royaltyMarket: Royalty) {
 
             self.id = initID
             self.metadata = metadata
@@ -112,20 +111,37 @@ pub contract Webshot: NonFungibleToken {
             self.royaltyMarket = royaltyMarket
         }
 
+        pub fun getID(): UInt64 {
+            return self.id
+        }
+
+
+        pub fun getMetadata(): Metadata {
+            return self.metadata
+        }
+
+        pub fun getRoyaltyMarket(): Royalty {
+            return self.royaltyMarket
+        }
+
+        pub fun getRoyaltyOwner(): Royalty {
+            return self.royaltyOwner
+        }
+
     }
 
- 
+
     //Standard NFT collectionPublic interface that can also borrowWebshot as the correct type
-    pub resource interface CollectionPublic {
+    pub resource interface WebshotCollectionPublic {
 
         pub fun deposit(token: @NonFungibleToken.NFT)
         pub fun getIDs(): [UInt64]
         pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
-        pub fun borrowWebshot(id: UInt64): &{Webshot.Public}? 
+        pub fun borrowWebshot(id: UInt64): &{Webshot.Public}?
     }
 
 
-    pub resource Collection: CollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
+    pub resource Collection: WebshotCollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
         // dictionary of NFT conforming tokens
         // NFT is a resource type with an `UInt64` ID field
         pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
@@ -169,7 +185,7 @@ pub contract Webshot: NonFungibleToken {
             return &self.ownedNFTs[id] as &NonFungibleToken.NFT
         }
 
-        // borrowWebshot returns a borrowed reference to a Webshot 
+        // borrowWebshot returns a borrowed reference to a Webshot
         // so that the caller can read data and call methods from it.
         //
         // Parameters: id: The ID of the NFT to get the reference for
@@ -184,7 +200,7 @@ pub contract Webshot: NonFungibleToken {
             }
         }
 
-         
+
         destroy() {
             destroy self.ownedNFTs
         }
@@ -201,34 +217,34 @@ pub contract Webshot: NonFungibleToken {
 
         let account=getAccount(address)
 
-        let artCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Art.CollectionPublic}>()  
+        let webshotCollection = account.getCapability(self.CollectionPublicPath)!.borrow<&Webshot.Collection{Webshot.WebshotCollectionPublic}>() ?? panic("Couldn't get collection")
 
-        return artCollection.getIDs();
-    } 
- 
+        return webshotCollection.getIDs();
+    }
+
 
 
     pub resource Minter {
 
         pub fun mintNFT(
-            name: String, 
-            url: String, 
-            owner:String, 
+            name: String,
+            url: String,
+            owner:String,
             ownerAddress:Address,
-            description: String, 
+            description: String,
             date: String,
             ipfs: String,
             content: String,
-            imgUrl: String, 
-            royaltyOwner: {String: Royalty},
-            royaltyMarket: {String: Royalty}) : @Webshot.NFT {
+            imgUrl: String,
+            royaltyOwner: Royalty,
+            royaltyMarket: Royalty) : @Webshot.NFT {
             var newNFT <- create NFT(
                 initID: Webshot.totalSupply,
                 metadata: Metadata(
-                    name: name, 
-                    url: url, 
+                    name: name,
+                    url: url,
                     owner: owner,
-                    ownerAddress: ownerAddress, 
+                    ownerAddress: ownerAddress,
                     description: description,
                     date: date,
                     ipfs: ipfs,
@@ -244,7 +260,7 @@ pub contract Webshot: NonFungibleToken {
             return <- newNFT
 
         }
- 
+
     }
 
 
@@ -253,7 +269,7 @@ pub contract Webshot: NonFungibleToken {
         pub fun addCapability(_ cap: Capability<&Minter>)
     }
 
-   
+
     //The admin resource that a client will create and store, then link up a public AdminClient
     pub resource Administrator: AdministratorClient {
 
@@ -272,31 +288,31 @@ pub contract Webshot: NonFungibleToken {
         }
 
         pub fun mintNFT(
-            name: String, 
-            url: String, 
-            owner:String, 
+            name: String,
+            url: String,
+            owner:String,
             ownerAddress:Address,
-            description: String, 
+            description: String,
             date: String,
             ipfs: String,
             content: String,
-            imgUrl: String, 
-            royaltyOwner: {String: Royalty},
-            royaltyMarket: {String: Royalty}) : @Webshot.NFT {
-            
+            imgUrl: String,
+            royaltyOwner: Royalty,
+            royaltyMarket: Royalty) : @Webshot.NFT {
+
             pre {
-                self.server != nil: 
+                self.server != nil:
                     "Cannot create art if server is not set"
             }
             return <- self.server!.borrow()!.mintNFT(
-                name: name, 
-                url: url, 
-                owner: owner, 
-                ownerAddress: ownerAddress, 
+                name: name,
+                url: url,
+                owner: owner,
+                ownerAddress: ownerAddress,
                 description: description,
                 date: date,
                 ipfs: ipfs,
-                content: content, 
+                content: content,
                 imgUrl: imgUrl,
                 royaltyOwner: royaltyOwner,
                 royaltyMarket: royaltyMarket
@@ -309,7 +325,7 @@ pub contract Webshot: NonFungibleToken {
     pub fun createAdminClient(): @Administrator {
         return <- create Administrator()
     }
-    
+
 
 	init() {
         // Initialize the total supply

@@ -1,6 +1,7 @@
 
 import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
+import FlowToken from "./FlowToken.cdc"
 //import FungibleToken from 0x9a0766d93b6608b7
 //import FUSD from 0xe223d8a629e49c68
 import Webshot from "./Webshot.cdc"
@@ -29,7 +30,7 @@ import Webshot from "./Webshot.cdc"
 
  */
 
- 
+
 pub contract WebshotMarket {
 
     //A set of capability and storage paths used in this contract
@@ -65,8 +66,9 @@ pub contract WebshotMarket {
     pub event Settled(name: String, owner: String, price:UFix64)
 
 
-    pub event Canceled(tokenID: UInt64)
-    pub event MarketplaceEarned(amount:UFix64, owner: Address)
+    pub event Canceled(id: UInt64)
+    pub event MarketplaceEarned(amount:UFix64) //, owner: Address)
+    pub event OwnerEarned(amount:UFix64) //, owner: Address)
 
 
     // SaleOffer events.
@@ -77,7 +79,7 @@ pub contract WebshotMarket {
     pub event SaleOfferAccepted(webshotId: UInt64, metadata: Webshot.Metadata, price: UFix64)
     // A sale offer has been destroyed, with or without being accepted.
     pub event SaleOfferFinished(webshotId: UInt64, metadata: Webshot.Metadata, price: UFix64)
-    
+
     // Collection events.
     //
     // A sale offer has been removed from the collection of Address.
@@ -85,9 +87,9 @@ pub contract WebshotMarket {
 
     // A sale offer has been inserted into the collection of Address.
     pub event CollectionInsertedSaleOffer(
-      webshotId: UInt64, 
-      metadata: Webshot.Metadata, 
-      owner: Address, 
+      webshotId: UInt64,
+      metadata: Webshot.Metadata,
+      owner: Address,
       price: UFix64
     )
 
@@ -98,10 +100,12 @@ pub contract WebshotMarket {
     pub resource interface SaleOfferPublicView {
         pub let webshotId: UInt64
         pub let metadata: Webshot.Metadata
+        pub let royaltyOwner: Webshot.Royalty
+        pub let royaltyMarket: Webshot.Royalty
         pub let price: UFix64
     }
 
- 
+
 
 
     // SaleOffer
@@ -114,6 +118,13 @@ pub contract WebshotMarket {
         // The Webshot NFT ID for sale.
         pub let webshotId: UInt64
 
+        // The Webshot NFT Metadata for sale.
+        pub let metadata: Webshot.Metadata
+
+        // The Webshot NFT Royalties.
+        pub let royaltyOwner: Webshot.Royalty
+        pub let royaltyMarket: Webshot.Royalty
+
         // The sale payment price.
         pub let price: UFix64
 
@@ -121,72 +132,72 @@ pub contract WebshotMarket {
         access(contract) var NFT: @Webshot.NFT?
 
         //the capability for the owner of the NFT to return the item to if the saleoffer is cancelled
-        access(contract) let ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>
+        access(contract) let ownerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>
 
         //the capability to pay the owner of the item when the sale offer has been accepted
         access(contract) let ownerVaultCap: Capability<&{FungibleToken.Receiver}>
 
 
-
         // Called by a purchaser to accept the sale offer.
-        // 
+        //
         pub fun accept(
-            buyerCollection: &Webshot.Collection{NonFungibleToken.Receiver},
+            buyerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
             buyerPayment: @FungibleToken.Vault
         ) {
             pre {
                 buyerPayment.balance == self.price: "Payment does not equal offer price"
                 self.saleCompleted == false: "The sale offer has already been accepted"
-                self.NFT != nil "Webshot not present in the sale offer"
+                self.NFT != nil: "Webshot not present in the sale offer"
             }
 
-            let metadata = self.NFT.metadata;
 
             self.saleCompleted = true
 
 
 
             //Withdraw cutPercentage to market and put it in their vault
-            let amountMarketCut = self.price * self.NFT!.royaltyMarket.cut
-            let beneficiaryMarketCut <- buyerPayment.withdraw(amount: amountMarketCut)
+            let amountMarketCut = self.price * self.royaltyMarket.cut
 
-            if let marketVaultRef = self.NFT!.royaltyMarket.wallet.borrow() {
+            if let marketVaultRef = self.royaltyMarket.wallet.borrow() {
+                let beneficiaryMarketCut <- buyerPayment.withdraw(amount: amountMarketCut)
                 marketVaultRef.deposit(from: <- beneficiaryMarketCut)
 
-                emit MarketplaceEarned(amount: amount, owner: self.NFT!.royaltyMarket.wallet.owner!.address)
+                emit MarketplaceEarned(amount: amountMarketCut) //, owner: self.royaltyMarket.wallet)
             } else {
                 panic("Could not send tokens to non existant market receiver")
             }
 
             //Withdraw cutPercentage to owner and put it in their vault
-            let amountOwnerCut = self.currentPrice * self.NFT!.royaltyOwner.cut
-            let beneficiaryOwnerCut <- buyerPayment.withdraw(amount: amountOwnerCut)
+            let amountOwnerCut = self.price * self.royaltyOwner.cut
 
-            if let ownerVaultRef = self.NFT!.royaltyOwner.wallet.borrow() {
+            if let ownerVaultRef = self.royaltyOwner.wallet.borrow() {
+                let beneficiaryOwnerCut <- buyerPayment.withdraw(amount: amountOwnerCut)
                 ownerVaultRef.deposit(from: <- beneficiaryOwnerCut)
 
-                emit MarketplaceEarned(amount: amount, owner: self.NFT!.royaltyMarket.wallet.owner!.address)
+                emit OwnerEarned(amount: amountOwnerCut) //, owner: self.royaltyOwner.wallet)
             } else {
                 panic("Could not send tokens to non existant market receiver")
             }
 
 
 
-
             self.ownerVaultCap.borrow()!.deposit(from: <- buyerPayment)
+            self.sendNFT(buyerCollectionCap)
+            //let NFT <- self.NFT! <- nil
+            //buyerCollection.deposit(token: <- NFT)
 
-            buyerCollection.deposit(token: <- self.NFT!)
-
-            emit SaleOfferAccepted(webshotId: self.webshotId, metadata: metadata, price: self.price)
+            emit SaleOfferAccepted(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
         }
 
+
+
         // sendNFT sends the NFT to the Collection belonging to the provided Capability
-        access(contract) fun sendNFT(_ capability: Capability<&{Webshot.CollectionPublic}>) {
+        access(contract) fun sendNFT(_ capability: Capability<&{Webshot.WebshotCollectionPublic}>) {
             if let collectionRef = capability.borrow() {
                 let NFT <- self.NFT <- nil
-                collectionRef.deposit(token: <- self.NFT!)
+                collectionRef.deposit(token: <- NFT!)
                 return
-            } 
+            }
             panic("Could not send NFT to non existing capability")
         }
 
@@ -198,7 +209,7 @@ pub contract WebshotMarket {
             }
             destroy self.NFT
             // Whether the sale completed or not, publicize that it is being withdrawn.
-            emit SaleOfferFinished(webshotId: self.webshotId)
+            emit SaleOfferFinished(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
         }
 
         // initializer
@@ -207,23 +218,25 @@ pub contract WebshotMarket {
         //
         init(
             NFT: @Webshot.NFT,
-            price: UFix64, 
-            ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>,
-            ownerVaultCap: Capability<&{FungibleToken.Receiver}>) { 
+            price: UFix64,
+            ownerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
+            ownerVaultCap: Capability<&{FungibleToken.Receiver}>
         ) {
             pre {
-                sellerItemProvider.borrow() != nil: "Cannot borrow seller"
-                sellerPaymentReceiver.borrow() != nil: "Cannot borrow sellerPaymentReceiver"
+                ownerVaultCap.borrow() != nil: "Cannot borrow ownerVaultCap"
             }
 
             self.saleCompleted = false
+            self.metadata = NFT.metadata
+            self.webshotId = NFT.id
+            self.royaltyOwner = NFT.royaltyOwner
+            self.royaltyMarket = NFT.royaltyMarket
             self.NFT <- NFT
-            self.webshotId = self.NFT.id
             self.price = price
             self.ownerCollectionCap = ownerCollectionCap
             self.ownerVaultCap = ownerVaultCap
 
-            emit SaleOfferCreated(webshotId: self.webshotId, metadata: self.NFT.metadata, price: self.price)
+            emit SaleOfferCreated(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
         }
     }
 
@@ -233,11 +246,11 @@ pub contract WebshotMarket {
     //
     pub fun createSaleOffer (
             NFT: @Webshot.NFT,
-            price: UFix64, 
-            ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>,
+            price: UFix64,
+            ownerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
             ownerVaultCap: Capability<&{FungibleToken.Receiver}>): @SaleOffer {
         return <-create SaleOffer(
-            NFT: NFT,
+            NFT: <-NFT,
             price: price,
             ownerCollectionCap: ownerCollectionCap,
             ownerVaultCap: ownerVaultCap
@@ -262,8 +275,6 @@ pub contract WebshotMarket {
         pub let price : UFix64
         pub let bidIncrement : UFix64
         pub let bids : UInt64
-        //Active is probably not needed when we have completed and expired above, consider removing it
-        pub let active: Bool
         pub let timeRemaining : Fix64
         pub let endTime : Fix64
         pub let startTime : Fix64
@@ -275,16 +286,16 @@ pub contract WebshotMarket {
         pub let expired: Bool
         pub let firstBidBlock: UInt64?
         pub let settledAt: UInt64?
-    
-        init(id:UInt64, 
+
+        init(id:UInt64,
             webshotId:UInt64,
-            currentPrice: UFix64, 
-            bids:UInt64, 
-            timeRemaining:Fix64, 
+            price: UFix64,
+            bids:UInt64,
+            timeRemaining:Fix64,
             metadata: Webshot.Metadata?,
-            leader:Address?, 
+            leader:Address?,
             bidIncrement: UFix64,
-            owner: Address, 
+            owner: Address,
             startTime: Fix64,
             endTime: Fix64,
             minNextBid:UFix64,
@@ -295,9 +306,8 @@ pub contract WebshotMarket {
         ) {
             self.id = id
             self.webshotId = webshotId
-            self.price = currentPrice
+            self.price = price
             self.bids = bids
-            self.active = !(expired || completed)
             self.timeRemaining = timeRemaining
             self.metadata = metadata
             self.leader = leader
@@ -310,6 +320,10 @@ pub contract WebshotMarket {
             self.expired = expired
             self.firstBidBlock = firstBidBlock;
             self.settledAt = settledAt;
+        }
+
+        pub fun active() : Bool {
+            return !(self.expired || self.completed)
         }
     }
 
@@ -344,40 +358,40 @@ pub contract WebshotMarket {
         //The length in seconds for this auction
         access(contract) var auctionLength: UFix64
 
-        //Right now the dropitem is not moved from the collection when it ends, it is just marked here that it has ended 
+        //Right now the dropitem is not moved from the collection when it ends, it is just marked here that it has ended
         access(contract) var auctionSettled: Bool
 
         // Auction State
         access(contract) var startPrice: UFix64
         access(contract) var currentPrice: UFix64
 
-        //the capability that points to the resource where you want the NFT transfered to if you win this bid. 
-        access(contract) var recipientCollectionCap: Capability<&{Webshot.CollectionPublic}>?
+        //the capability that points to the resource where you want the NFT transfered to if you win this bid.
+        access(contract) var recipientCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>?
 
         //the capablity to send the escrow bidVault to if you are outbid
         access(contract) var recipientVaultCap: Capability<&{FungibleToken.Receiver}>?
 
         //the capability for the owner of the NFT to return the item to if the auction is cancelled
-        access(contract) let ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>
+        access(contract) let ownerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>
 
         //the capability to pay the owner of the item when the auction is done
         access(contract) let ownerVaultCap: Capability<&{FungibleToken.Receiver}>
 
 
 
-        init( 
+        init(
             NFT: @Webshot.NFT,
             minimumBidIncrement: UFix64,
             auctionStartTime: UFix64,
-            startPrice: UFix64, 
+            startPrice: UFix64,
             auctionLength: UFix64,
-            ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>,
-            ownerVaultCap: Capability<&{FungibleToken.Receiver}>) { 
+            ownerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
+            ownerVaultCap: Capability<&{FungibleToken.Receiver}>) {
 
             WebshotMarket.totalAuctions = WebshotMarket.totalAuctions + (1 as UInt64)
-            self.auctionId=WebshotMarket.totalAuctions
-            self.firstBidBlock=nil
-            self.settledAt=nil
+            self.auctionId = WebshotMarket.totalAuctions
+            self.firstBidBlock = nil
+            self.settledAt = nil
             self.NFT <- NFT
             self.bidVault <- FlowToken.createEmptyVault()
             self.minimumBidIncrement = minimumBidIncrement
@@ -393,17 +407,18 @@ pub contract WebshotMarket {
             self.numberOfBids=0
         }
 
-        pub fun content() : String? {
-            return self.NFT?.metadata.content()
+
+        pub fun metadata() : Webshot.Metadata? {
+            return self.NFT?.getMetadata()
         }
 
         // sendNFT sends the NFT to the Collection belonging to the provided Capability
-        access(contract) fun sendNFT(_ capability: Capability<&{Webshot.CollectionPublic}>) {
+        access(contract) fun sendNFT(_ capability: Capability<&{Webshot.WebshotCollectionPublic}>) {
             if let collectionRef = capability.borrow() {
                 let NFT <- self.NFT <- nil
                 collectionRef.deposit(token: <-NFT!)
                 return
-            } 
+            }
             panic("Could not send NFT to non existing capability")
         }
 
@@ -422,10 +437,10 @@ pub contract WebshotMarket {
             if let vaultCap = self.recipientVaultCap {
                 self.sendBidTokens(self.recipientVaultCap!)
                 return
-            } 
+            }
         }
 
-        //This method should probably use preconditions more 
+        //This method should probably use preconditions more
         pub fun settle(cutPercentage: UFix64, cutVault:Capability<&{FungibleToken.Receiver}> )  {
             pre {
                 !self.auctionSettled : "The auction is already settled"
@@ -437,24 +452,26 @@ pub contract WebshotMarket {
             if self.currentPrice == 0.0{
                 self.returnAuctionItemToOwner()
                 return
-            }            
+            }
 
             //Withdraw cutPercentage to marketplace and put it in their vault
             let amountMarketplaceCut = self.currentPrice*cutPercentage
             let beneficiaryCut <- self.bidVault.withdraw(amount: amountMarketplaceCut)
 
             let cutVault=cutVault.borrow()!
-            emit MarketplaceEarned(amount: amount, owner: cutVault.owner!.address)
+            emit MarketplaceEarned(amount: amountMarketplaceCut) //, owner: cutVault.owner!.address)
             cutVault.deposit(from: <- beneficiaryCut)
 
             self.sendNFT(self.recipientCollectionCap!)
             self.sendBidTokens(self.ownerVaultCap)
 
             self.auctionSettled = true
-            
+
             self.settledAt=getCurrentBlock().height
-            emit TSettled(tokenID: self.auctionId, price: self.currentPrice)
-            emit Settled(name: self.NFT.metadata.name, owner: self.NFT.metadata.owner, price: self.currentPrice)
+            let auctionStatus = self.getAuctionStatus()
+
+            emit TSettled(id: self.auctionId, price: self.currentPrice)
+            emit Settled(name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner, price: self.currentPrice)
         }
 
         pub fun returnAuctionItemToOwner() {
@@ -466,14 +483,9 @@ pub contract WebshotMarket {
             self.sendNFT(self.ownerCollectionCap)
          }
 
-         pub fun cancelAuction(_ id: UInt64) {
-            pre {
-                self.auctions[id] != nil:
-                    "Auction does not exist"
-            }
-            let itemRef = &self.auctions[id] as &Auction
-            itemRef.returnAuctionItemToOwner()
-            emit Canceled(tokenID: id)
+         pub fun cancelAuction() {
+            self.returnAuctionItemToOwner()
+            emit Canceled(id: self.auctionId)
         }
 
         //this can be negative if is expired
@@ -487,7 +499,7 @@ pub contract WebshotMarket {
             return remaining
         }
 
-      
+
         pub fun isAuctionExpired(): Bool {
             let timeRemaining= self.timeRemaining()
             return timeRemaining < Fix64(0.0)
@@ -509,9 +521,9 @@ pub contract WebshotMarket {
 
         // This method should probably use preconditions more
         pub fun placeBid(
-            bidTokens: @FungibleToken.Vault, 
-            vaultCap: Capability<&{FungibleToken.Receiver}>, 
-            collectionCap: Capability<&{Webshot.CollectionPublic}>, 
+            bidTokens: @FungibleToken.Vault,
+            vaultCap: Capability<&{FungibleToken.Receiver}>,
+            collectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
             minimumTimeRemaining: UFix64) {
 
             pre {
@@ -522,7 +534,7 @@ pub contract WebshotMarket {
                 self.NFT != nil: "NFT in auction does not exist"
                 bidTokens.balance >= self.minNextBid() : "bid amount must be larger or equal to the current price + minimum bid increment"
             }
-           
+
             if self.bidVault.balance != 0.0 {
                 if let vaultCap = self.recipientVaultCap {
                     self.sendBidTokens(self.recipientVaultCap!)
@@ -544,7 +556,7 @@ pub contract WebshotMarket {
             if auctionStatus.endTime < time  {
                 panic("This drop has ended")
             }
-           
+
             //we save the time of the first bid so that it can be used to fetch events from that given block
             if self.firstBidBlock == nil {
                 self.firstBidBlock=block.height
@@ -556,8 +568,8 @@ pub contract WebshotMarket {
             if auctionStatus.endTime < bidEndTime {
                 let extendWith=bidEndTime - auctionStatus.endTime
                 emit TAuctionExtended(id: self.auctionId, extendWith: extendWith, extendTo: bidEndTime)
-                emit AuctionExtended(name: auctionStatus.metadata.name, owner: auctionStatus.metadata.owner)
-                self.extendDropWith(UFix64(extendWith))
+                emit AuctionExtended(name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner)
+                self.extendWith(UFix64(extendWith))
             }
 
 
@@ -577,7 +589,7 @@ pub contract WebshotMarket {
 
             let bidderAddress = vaultCap.borrow()!.owner!.address
             emit TBid(auctionId: self.auctionId, bidderAddress: bidderAddress , bidPrice: self.currentPrice, time: time, blockHeight: block.height)
-            emit Bid(name: auctionStatus.metadata.name, owner: auctionStatus.metadata.owner, bidder: bidderAddress, price: self.currentPrice)
+            emit Bid(name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner, bidder: bidderAddress, price: self.currentPrice)
         }
 
         pub fun getAuctionStatus() :AuctionStatus {
@@ -589,10 +601,9 @@ pub contract WebshotMarket {
 
             return AuctionStatus(
                 id: self.auctionId,
-                webshotId: self.NFT.id
-                currentPrice: self.currentPrice, 
+                webshotId: self.NFT?.id!,
+                price: self.currentPrice,
                 bids: self.numberOfBids,
-                active: !self.auctionSettled  && !self.isAuctionExpired(),
                 timeRemaining: self.timeRemaining(),
                 metadata: self.NFT?.metadata,
                 leader: leader,
@@ -614,7 +625,7 @@ pub contract WebshotMarket {
             if self.NFT != nil {
                 self.sendNFT(self.ownerCollectionCap)
             }
-            
+
             // if there's a bidder...
             if let vaultCap = self.recipientVaultCap {
                 // ...send the bid tokens back to the bidder
@@ -624,7 +635,7 @@ pub contract WebshotMarket {
             destroy self.NFT
             destroy self.bidVault
         }
-        
+
     }
 
 
@@ -637,7 +648,7 @@ pub contract WebshotMarket {
         pub fun borrowSaleItem(webshotId: UInt64): &SaleOffer{SaleOfferPublicView}?
         pub fun purchase(
             webshotId: UInt64,
-            buyerCollection: &Webshot.Collection{NonFungibleToken.Receiver},
+            buyerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
             buyerPayment: @FungibleToken.Vault
         )
    }
@@ -646,7 +657,7 @@ pub contract WebshotMarket {
     // use by the collection's owner.
     pub resource interface SaleOfferAdmin {
         pub fun insert(offer: @WebshotMarket.SaleOffer)
-        pub fun remove(webshotId: UInt64): @SaleOffer 
+        pub fun remove(webshotId: UInt64): @SaleOffer
     }
 
     // A resource that allows its owner to manage a list of SaleOffers, and purchasers to interact with them.
@@ -680,7 +691,7 @@ pub contract WebshotMarket {
             emit CollectionRemovedSaleOffer(webshotId: webshotId, owner: self.owner?.address!)
             return <-(self.saleOffers.remove(key: webshotId) ?? panic("missing SaleOffer"))
         }
- 
+
         // purchase
         // If the caller passes a valid webshotId and the item is still for sale, and passes a FungibleToken vault
         // typed as a FungibleToken.Vault containing the correct payment amount, this will transfer the Webshot to the caller's
@@ -694,14 +705,14 @@ pub contract WebshotMarket {
         //
         pub fun purchase(
             webshotId: UInt64,
-            buyerCollection: &Webshot.Collection{NonFungibleToken.Receiver},
+            buyerCollectionCap: Capability<&{Webshot.WebshotCollectionPublic}>,
             buyerPayment: @FungibleToken.Vault
         ) {
             pre {
-                self.saleOffers[itemID] != nil: "SaleOffer does not exist in the collection!"
+                self.saleOffers[webshotId] != nil: "SaleOffer does not exist in the collection!"
             }
             let offer <- self.remove(webshotId: webshotId)
-            offer.accept(buyerCollection: buyerCollection, buyerPayment: <- buyerPayment)
+            offer.accept(buyerCollectionCap: buyerCollectionCap, buyerPayment: <- buyerPayment)
             //FIXME: Is this correct? Or should we return it to the caller to dispose of?
             destroy offer
         }
@@ -741,14 +752,14 @@ pub contract WebshotMarket {
     // createEmptyCollection
     // Make creating a Collection publicly accessible.
     //
-    pub fun createEmptyCollection(): @Collection {
-        return <-create Collection()
+    pub fun createEmptyCollection(): @SaleOfferCollection {
+        return <-create SaleOfferCollection()
     }
 
 
 
 
-    
+
 
     //An resource interface that everybody can access through a public capability.
     pub resource interface AuctionPublic {
@@ -756,13 +767,13 @@ pub contract WebshotMarket {
         pub fun getAllStatuses(): {UInt64: AuctionStatus}
         pub fun getStatus(auctionId: UInt64): AuctionStatus
 
-        pub fun getWebshot(auctionId: UInt64): String
+        pub fun getWebshot(auctionId: UInt64): Webshot.Metadata
 
         pub fun placeBid(
             auctionId:UInt64,
-            bidTokens: @FungibleToken.Vault, 
-            vaultCap: Capability<&{FungibleToken.Receiver}>, 
-            collectionCap: Capability<&{Webshot.CollectionPublic}>
+            bidTokens: @FungibleToken.Vault,
+            vaultCap: Capability<&{FungibleToken.Receiver}>,
+            collectionCap: Capability<&{Webshot.WebshotCollectionPublic}>
         )
 
 
@@ -772,10 +783,10 @@ pub contract WebshotMarket {
 
         pub fun createAuction(
              nft: @NonFungibleToken.NFT,
-             minimumBidIncrement: UFix64, 
-             startTime: UFix64, 
+             minimumBidIncrement: UFix64,
+             startTime: UFix64,
              startPrice: UFix64,
-             vaultCap: Capability<&{FungibleToken.Receiver}>, 
+             vaultCap: Capability<&{FungibleToken.Receiver}>,
              webshotAdmin: &Webshot.Administrator)
 
         pub fun settle(_ auctionId: UInt64)
@@ -787,12 +798,12 @@ pub contract WebshotMarket {
         pub var auctions: @{UInt64: Auction}
 
         //it is possible to adjust the cutPercentage if you own a Webshot.AuctionCollection
-        pub(set) var cutPercentage:UFix64 
+        pub(set) var cutPercentage:UFix64
 
         pub let marketplaceVault: Capability<&{FungibleToken.Receiver}>
 
-        //NFTs that are not sold are put here when a bid is settled.  
-        pub let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>
+        //NFTs that are not sold are put here when a bid is settled.
+        pub let marketplaceNFTUnsold: Capability<&{Webshot.WebshotCollectionPublic}>
 
         //naming things are hard...
         pub(set) var minimumTimeRemainingAfterBid: UFix64
@@ -801,8 +812,8 @@ pub contract WebshotMarket {
         pub(set) var auctionLength: UFix64
 
         init(
-            marketplaceVault: Capability<&{FungibleToken.Receiver}>, 
-            marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>,
+            marketplaceVault: Capability<&{FungibleToken.Receiver}>,
+            marketplaceNFTUnsold: Capability<&{Webshot.WebshotCollectionPublic}>,
             cutPercentage: UFix64,
             auctionLength: UFix64,
             minimumTimeRemainingAfterBid:UFix64
@@ -812,17 +823,17 @@ pub contract WebshotMarket {
             self.marketplaceVault = marketplaceVault
             self.auctionLength = auctionLength
             self.minimumTimeRemainingAfterBid = minimumTimeRemainingAfterBid
-            self.drops <- {}
+            self.auctions <- {}
         }
 
 
-        
+
         pub fun createAuction(
              nft: @NonFungibleToken.NFT,
-             minimumBidIncrement: UFix64, 
-             startTime: UFix64, 
+             minimumBidIncrement: UFix64,
+             startTime: UFix64,
              startPrice: UFix64,
-             vaultCap: Capability<&{FungibleToken.Receiver}>, 
+             vaultCap: Capability<&{FungibleToken.Receiver}>,
              webshotAdmin: &Webshot.Administrator) {
 
             pre {
@@ -831,7 +842,7 @@ pub contract WebshotMarket {
 
             let webshot <- nft as! @Webshot.NFT
             let metadata = webshot.metadata
-            
+
 
             let auction <- create Auction(
                 NFT: <- webshot,
@@ -842,7 +853,7 @@ pub contract WebshotMarket {
                 ownerCollectionCap: self.marketplaceNFTUnsold,
                 ownerVaultCap: vaultCap
             )
-            
+
             emit TAuctionCreated(id: auction.auctionId, owner: vaultCap.borrow()!.owner!.address)
             emit AuctionCreated(name: metadata.name, owner: metadata.owner)
 
@@ -855,7 +866,7 @@ pub contract WebshotMarket {
         //Get all the auction statuses
         pub fun getAllStatuses(): {UInt64: AuctionStatus} {
             var AuctionStatus: {UInt64: AuctionStatus }= {}
-            for id in self.drops.keys {
+            for id in self.auctions.keys {
                 let itemRef = &self.auctions[id] as? &Auction
                 AuctionStatus[id] = itemRef.getAuctionStatus()
             }
@@ -876,9 +887,9 @@ pub contract WebshotMarket {
         }
 
         //get the webshot for this auction
-        pub fun getWebshot(auctionId: UInt64) : String {
+        pub fun getWebshot(auctionId: UInt64) : Webshot.Metadata {
             let auction= self.getAuction(auctionId)
-            return auction.content()!
+            return auction.metadata()!
         }
 
         //settle an auction
@@ -889,37 +900,37 @@ pub contract WebshotMarket {
         //place a bid, will just delegate to the method in the drop collection
         pub fun placeBid(
             auctionId:UInt64,
-            bidTokens: @FungibleToken.Vault, 
-            vaultCap: Capability<&{FungibleToken.Receiver}>, 
-            collectionCap: Capability<&{Webshot.CollectionPublic}>
+            bidTokens: @FungibleToken.Vault,
+            vaultCap: Capability<&{FungibleToken.Receiver}>,
+            collectionCap: Capability<&{Webshot.WebshotCollectionPublic}>
         ) {
             self.getAuction(auctionId).placeBid(
-                bidTokens: <- bidTokens, 
-                vaultCap: vaultCap, 
-                collectionCap:collectionCap, 
+                bidTokens: <- bidTokens,
+                vaultCap: vaultCap,
+                collectionCap:collectionCap,
                 minimumTimeRemaining: self.minimumTimeRemainingAfterBid
             )
         }
 
-        destroy() {            
+        destroy() {
             destroy self.auctions
         }
     }
 
 
-    
 
- 
+
+
     //An Administrator resource that is stored as a private capability. That capability will be given to another account using a capability receiver
     pub resource Administrator {
         pub fun createAuctionCollection(
             marketplaceVault: Capability<&{FungibleToken.Receiver}>,
-            marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>,
+            marketplaceNFTUnsold: Capability<&{Webshot.WebshotCollectionPublic}>,
             cutPercentage: UFix64,
-            auctionLength: UFix64, 
+            auctionLength: UFix64,
             minimumTimeRemainingAfterBid: UFix64): @AuctionCollection {
             let collection <- create AuctionCollection(
-                marketplaceVault: marketplaceVault, 
+                marketplaceVault: marketplaceVault,
                 marketplaceNFTUnsold: marketplaceNFTUnsold,
                 cutPercentage: cutPercentage,
                 auctionLength: auctionLength,
@@ -936,7 +947,7 @@ pub contract WebshotMarket {
     }
 
     //The versus admin resource that a client will create and store, then link up a public VersusAdminClient
-    pub resource AuctionAdmin: AuctionAdminClient {
+    pub resource WebshotAuctionAdmin: AuctionAdminClient {
 
         access(self) var server: Capability<&Administrator>?
 
@@ -955,30 +966,30 @@ pub contract WebshotMarket {
         //make it possible to create a auction marketplace. Will just delegate to the administrator
         pub fun createAuctionMarketplace(
             marketplaceVault: Capability<&{FungibleToken.Receiver}>,
-            marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>,
+            marketplaceNFTUnsold: Capability<&{Webshot.WebshotCollectionPublic}>,
             cutPercentage: UFix64,
-            auctionLength: UFix64, 
+            auctionLength: UFix64,
             minimumTimeRemainingAfterBid: UFix64) :@AuctionCollection {
 
             pre {
-                self.server != nil: 
+                self.server != nil:
                     "Cannot create versus marketplace if server is not set"
             }
             return <- self.server!.borrow()!.createAuctionCollection(
-                marketplaceVault: marketplaceVault, 
-                marketplaceNFTUnsold: marketplaceNFTUnsold, 
-                cutPercentage: cutPercentage, 
-                auctionLength: auctionLength, 
+                marketplaceVault: marketplaceVault,
+                marketplaceNFTUnsold: marketplaceNFTUnsold,
+                cutPercentage: cutPercentage,
+                auctionLength: auctionLength,
                 minimumTimeRemainingAfterBid: minimumTimeRemainingAfterBid
             )
         }
     }
 
     //make it possible for a user that wants to be a versus admin to create the client
-    pub fun createAdminClient(): @AuctionAdmin {
-        return <- create AuctionAdmin()
+    pub fun createAdminClient(): @WebshotAuctionAdmin {
+        return <- create WebshotAuctionAdmin()
     }
-    
+
 
 
     //initialize all the paths and create and link up the admin proxy
@@ -998,6 +1009,5 @@ pub contract WebshotMarket {
         self.account.save(<- create Administrator(), to: self.WebshotMarketAdministratorStoragePath)
         self.account.link<&Administrator>(self.WebshotMarketAdministratorPrivatePath, target: self.WebshotMarketAdministratorStoragePath)
     }
-     
+
 }
- 
