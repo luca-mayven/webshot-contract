@@ -99,10 +99,10 @@ pub contract WebshotMarket {
     //
     pub resource interface SaleOfferPublicView {
         pub let webshotId: UInt64
-        pub let metadata: Webshot.Metadata
-        pub let royaltyOwner: Webshot.Royalty
-        pub let royaltyMarket: Webshot.Royalty
         pub let price: UFix64
+
+        pub fun getMetadata(): Webshot.Metadata
+        pub fun getRoyalty(): {String: Webshot.Royalty}
     }
 
 
@@ -118,13 +118,6 @@ pub contract WebshotMarket {
         // The Webshot NFT ID for sale.
         pub let webshotId: UInt64
 
-        // The Webshot NFT Metadata for sale.
-        pub let metadata: Webshot.Metadata
-
-        // The Webshot NFT Royalties.
-        pub let royaltyOwner: Webshot.Royalty
-        pub let royaltyMarket: Webshot.Royalty
-
         // The sale payment price.
         pub let price: UFix64
 
@@ -138,6 +131,14 @@ pub contract WebshotMarket {
         access(contract) let ownerVaultCap: Capability<&{FungibleToken.Receiver}>
 
 
+
+        pub fun getMetadata(): Webshot.Metadata {
+            return self.NFT?.metadata!
+        }
+        pub fun getRoyalty(): {String: Webshot.Royalty} {
+            return self.NFT?.royalty!
+        }
+
         // Called by a purchaser to accept the sale offer.
         //
         pub fun accept(
@@ -148,45 +149,50 @@ pub contract WebshotMarket {
                 buyerPayment.balance == self.price: "Payment does not equal offer price"
                 self.saleCompleted == false: "The sale offer has already been accepted"
                 self.NFT != nil: "Webshot not present in the sale offer"
+                self.NFT?.royalty != nil: "Royalty not present in the Webshot"
             }
 
 
             self.saleCompleted = true
 
 
+            let royalty: {String: Webshot.Royalty} = self.NFT?.royalty!
 
-            //Withdraw cutPercentage to market and put it in their vault
-            let amountMarketCut = self.price * self.royaltyMarket.cut
+            if let royaltyMarket: Webshot.Royalty = royalty["market"] {
+                //Withdraw cutPercentage to market and put it in their vault
+                let amountMarketCut = self.price * royaltyMarket.cut
 
-            if let marketVaultRef = self.royaltyMarket.wallet.borrow() {
-                let beneficiaryMarketCut <- buyerPayment.withdraw(amount: amountMarketCut)
-                marketVaultRef.deposit(from: <- beneficiaryMarketCut)
+                if let marketVaultRef = royaltyMarket.wallet.borrow() {
+                    let beneficiaryMarketCut <- buyerPayment.withdraw(amount: amountMarketCut)
+                    marketVaultRef.deposit(from: <- beneficiaryMarketCut)
 
-                emit MarketplaceEarned(amount: amountMarketCut) //, owner: self.royaltyMarket.wallet)
-            } else {
-                panic("Could not send tokens to non existant market receiver")
+                    emit MarketplaceEarned(amount: amountMarketCut) //, owner: royaltyMarket.wallet)
+                } else {
+                    panic("Could not send tokens to non existant market receiver")
+                }
             }
 
-            //Withdraw cutPercentage to owner and put it in their vault
-            let amountOwnerCut = self.price * self.royaltyOwner.cut
+            if let royaltyOwner: Webshot.Royalty = royalty["owner"] {
+                //Withdraw cutPercentage to owner and put it in their vault
+                let amountOwnerCut = self.price * royaltyOwner.cut
 
-            if let ownerVaultRef = self.royaltyOwner.wallet.borrow() {
-                let beneficiaryOwnerCut <- buyerPayment.withdraw(amount: amountOwnerCut)
-                ownerVaultRef.deposit(from: <- beneficiaryOwnerCut)
+                if let ownerVaultRef = royaltyOwner.wallet.borrow() {
+                    let beneficiaryOwnerCut <- buyerPayment.withdraw(amount: amountOwnerCut)
+                    ownerVaultRef.deposit(from: <- beneficiaryOwnerCut)
 
-                emit OwnerEarned(amount: amountOwnerCut) //, owner: self.royaltyOwner.wallet)
-            } else {
-                panic("Could not send tokens to non existant market receiver")
+                    emit OwnerEarned(amount: amountOwnerCut) //, owner: royaltyOwner.wallet)
+                } else {
+                    panic("Could not send tokens to non existant market receiver")
+                }
             }
-
 
 
             self.ownerVaultCap.borrow()!.deposit(from: <- buyerPayment)
             self.sendNFT(buyerCollectionCap)
-            //let NFT <- self.NFT! <- nil
-            //buyerCollection.deposit(token: <- NFT)
+            //let NFT <- self.NFT <- nil
+            //buyerCollection.deposit(token: <- NFT!)
 
-            emit SaleOfferAccepted(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
+            emit SaleOfferAccepted(webshotId: self.NFT?.id!, metadata: self.NFT?.metadata!, price: self.price)
         }
 
 
@@ -207,9 +213,10 @@ pub contract WebshotMarket {
             if self.NFT != nil {
                 self.sendNFT(self.ownerCollectionCap)
             }
-            destroy self.NFT
             // Whether the sale completed or not, publicize that it is being withdrawn.
-            emit SaleOfferFinished(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
+            emit SaleOfferFinished(webshotId: self.NFT?.id!, metadata: self.NFT?.metadata!, price: self.price)
+
+            destroy self.NFT
         }
 
         // initializer
@@ -227,16 +234,13 @@ pub contract WebshotMarket {
             }
 
             self.saleCompleted = false
-            self.metadata = NFT.metadata
             self.webshotId = NFT.id
-            self.royaltyOwner = NFT.royaltyOwner
-            self.royaltyMarket = NFT.royaltyMarket
             self.NFT <- NFT
             self.price = price
             self.ownerCollectionCap = ownerCollectionCap
             self.ownerVaultCap = ownerVaultCap
 
-            emit SaleOfferCreated(webshotId: self.webshotId, metadata: self.metadata, price: self.price)
+            emit SaleOfferCreated(webshotId: self.NFT?.id!, metadata: self.NFT?.metadata!, price: self.price)
         }
     }
 
@@ -669,8 +673,8 @@ pub contract WebshotMarket {
         // Insert a SaleOffer into the collection, replacing one with the same webshotId if present.
         //
          pub fun insert(offer: @WebshotMarket.SaleOffer) {
-            let webshotId: UInt64 = offer.webshotId
-            let metadata: Webshot.Metadata = offer.metadata
+            let webshotId: UInt64 = offer.NFT?.id!
+            let metadata: Webshot.Metadata = offer.NFT?.metadata!
             let price: UFix64 = offer.price
 
             // add the new offer to the dictionary which removes the old one

@@ -19,10 +19,7 @@ import FungibleToken from "./FungibleToken.cdc"
 
  Each Webshot has a Metadata struct containing both the IPFS URL with the high-res copy of the screenshot, and also a small thumbnail saved on-chain in the "content" field
 
- royaltyOwner defines the percentage cut for the Owner to be applied in direct sales
-
- royaltyMarket defines the percentage cut for the Marketplace to be applied both in direct sales and auctions
-
+ royalty defines the percentage cut for the Owner and the Market to be applied in direct sales
 
  */
 
@@ -96,19 +93,16 @@ pub contract Webshot: NonFungibleToken {
     pub resource NFT: NonFungibleToken.INFT, Public {
         pub let id: UInt64
         pub let metadata: Metadata
-        pub let royaltyOwner: Royalty
-        pub let royaltyMarket: Royalty
+        pub let royalty: {String: Royalty}
 
         init(
             initID: UInt64,
             metadata: Metadata,
-            royaltyOwner: Royalty,
-            royaltyMarket: Royalty) {
+            royalty: {String: Royalty}) {
 
             self.id = initID
             self.metadata = metadata
-            self.royaltyOwner = royaltyOwner
-            self.royaltyMarket = royaltyMarket
+            self.royalty = royalty
         }
 
         pub fun getID(): UInt64 {
@@ -120,13 +114,10 @@ pub contract Webshot: NonFungibleToken {
             return self.metadata
         }
 
-        pub fun getRoyaltyMarket(): Royalty {
-            return self.royaltyMarket
+        pub fun getRoyalty(): {String: Royalty} {
+            return self.royalty
         }
 
-        pub fun getRoyaltyOwner(): Royalty {
-            return self.royaltyOwner
-        }
 
     }
 
@@ -236,8 +227,7 @@ pub contract Webshot: NonFungibleToken {
             ipfs: String,
             content: String,
             imgUrl: String,
-            royaltyOwner: Royalty,
-            royaltyMarket: Royalty) : @Webshot.NFT {
+            royalty: {String: Royalty}) : @Webshot.NFT {
             var newNFT <- create NFT(
                 initID: Webshot.totalSupply,
                 metadata: Metadata(
@@ -251,8 +241,7 @@ pub contract Webshot: NonFungibleToken {
                     content: content,
                     imgUrl: imgUrl
                 ),
-                royaltyOwner: royaltyOwner,
-                royaltyMarket: royaltyMarket
+                royalty: royalty
             )
             emit Minted(id: Webshot.totalSupply, metadata: newNFT.metadata)
 
@@ -297,8 +286,7 @@ pub contract Webshot: NonFungibleToken {
             ipfs: String,
             content: String,
             imgUrl: String,
-            royaltyOwner: Royalty,
-            royaltyMarket: Royalty) : @Webshot.NFT {
+            royalty: {String: Royalty}) : @Webshot.NFT {
 
             pre {
                 self.server != nil:
@@ -314,8 +302,7 @@ pub contract Webshot: NonFungibleToken {
                 ipfs: ipfs,
                 content: content,
                 imgUrl: imgUrl,
-                royaltyOwner: royaltyOwner,
-                royaltyMarket: royaltyMarket
+                royalty: royalty
             )
         }
 
