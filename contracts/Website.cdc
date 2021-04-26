@@ -1,3 +1,4 @@
+
 import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
 //import FungibleToken from 0x9a0766d93b6608b7
@@ -5,7 +6,7 @@ import FungibleToken from "./FungibleToken.cdc"
 
 /*
 
- The contract that defines the Webshot NFT and a Collection to manage them
+ The contract that defines the Website NFT and a Collection to manage them
 
  This contract is based on a mix of 2 other contracts:
 
@@ -16,14 +17,12 @@ import FungibleToken from "./FungibleToken.cdc"
  https://github.com/onflow/kitty-items
 
 
- Each Webshot has a Metadata struct containing both the IPFS URL with the high-res copy of the screenshot, and also a small thumbnail saved on-chain in the "content" field
-
- royalty defines the percentage cut for the Owner and the Market to be applied in direct sales
+ Each Website defines the name, URL, drop frequency, minting number for all the webshots created from it
 
  */
 
 
-pub contract Webshot: NonFungibleToken {
+pub contract Website: NonFungibleToken {
 
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
@@ -37,103 +36,68 @@ pub contract Webshot: NonFungibleToken {
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
     pub event Deposit(id: UInt64, to: Address?)
-    pub event Minted(id: UInt64, metadata: Metadata)
+    pub event Minted(id: UInt64, name: String, url: String)
 
-    //The public interface can show metadata and the content for the Webshot
     pub resource interface Public {
         pub let id: UInt64
-        pub let metadata: Metadata
-    }
-
-    //content is embedded in the NFT both as content and as URL pointing to an IPFS
-    pub struct Metadata {
-        pub let websiteAddress: Address
-        pub let mint: UInt64
         pub let name: String
         pub let url: String
-        pub let owner: String
+        pub let ownerName: String
         pub let ownerAddress: Address
         pub let description: String
-        pub let date: String
-        pub let ipfs: String
-        pub let imgUrl: String
-
-        init(
-            websiteAddress: Address,
-            mint: UInt64
-            name: String,
-            url: String,
-            owner: String,
-            ownerAddress:Address,
-            description: String,
-            date: String,
-            ipfs: String,
-            imgUrl: String) {
-                self.websiteAddress = websiteAddress
-                self.mint = mint
-                self.name = name
-                self.url = url
-                self.owner = owner
-                self.ownerAddress = ownerAddress
-                self.description = description
-                self.date = date
-                self.ipfs = ipfs
-                self.imgUrl = imgUrl
-        }
-    }
-
-    pub struct Royalty{
-        pub let wallet: Capability<&{FungibleToken.Receiver}>
-        pub let cut: UFix64
-
-        init(wallet: Capability<&{FungibleToken.Receiver}>, cut: UFix64 ){
-           self.wallet = wallet
-           self.cut = cut
-        }
+        pub let webshotMinInterval: UInt64
+        pub let isRecurring: Bool
+        access(contract) var totalMinted: UInt64
     }
 
     pub resource NFT: NonFungibleToken.INFT, Public {
         pub let id: UInt64
-        pub let content: String
-        pub let metadata: Metadata
-        pub let royalty: {String: Royalty}
+        pub let name: String
+        pub let url: String
+        pub let ownerName: String
+        pub let ownerAddress: Address
+        pub let description: String
+        pub let webshotMinInterval: UInt64
+        pub let isRecurring: Bool
+        access(contract) var totalMinted: UInt64
 
         init(
             id: UInt64,
-            content: String,
-            metadata: Metadata,
-            royalty: {String: Royalty}) {
+            name: String,
+            url: String,
+            ownerName: String,
+            ownerAddress: Address,
+            description: String,
+            webshotMinInterval: UInt64,
+            isRecurring: Bool
+                    ) {
 
             self.id = id
-            self.content = content
-            self.metadata = metadata
-            self.royalty = royalty
-        }
-
-
-        pub fun getID(): UInt64 {
-            return self.id
-        }
-
-        pub fun getMetadata(): Metadata {
-            return self.metadata
-        }
-
-        pub fun getRoyalty(): {String: Royalty} {
-            return self.royalty
+            self.totalMinted = 0
+            self.name = name
+            self.url = url
+            self.ownerName = ownerName
+            self.ownerAddress = ownerAddress
+            self.description = description
+            self.webshotMinInterval = webshotMinInterval
+            self.isRecurring = isRecurring
         }
     }
 
 
-    //Standard NFT collectionPublic interface that can also borrowWebshot as the correct type
-    pub resource interface CollectionPublic {
 
+
+
+
+
+
+    //Standard NFT CollectionPublic interface that can also borrowWebsite as the correct type
+    pub resource interface CollectionPublic {
         pub fun deposit(token: @NonFungibleToken.NFT)
         pub fun getIDs(): [UInt64]
         pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
-        pub fun borrowWebshot(id: UInt64): &{Webshot.Public}?
+        pub fun borrowWebsite(id: UInt64): &{Website.Public}?
     }
-
 
     pub resource Collection: CollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
         // dictionary of NFT conforming tokens
@@ -156,7 +120,7 @@ pub contract Webshot: NonFungibleToken {
         // deposit takes a NFT and adds it to the collections dictionary
         // and adds the ID to the id array
         pub fun deposit(token: @NonFungibleToken.NFT) {
-            let token <- token as! @Webshot.NFT
+            let token <- token as! @Website.NFT
 
             let id: UInt64 = token.id
 
@@ -179,16 +143,16 @@ pub contract Webshot: NonFungibleToken {
             return &self.ownedNFTs[id] as &NonFungibleToken.NFT
         }
 
-        // borrowWebshot returns a borrowed reference to a Webshot
+        // borrowWebsite returns a borrowed reference to a Website
         // so that the caller can read data and call methods from it.
         //
         // Parameters: id: The ID of the NFT to get the reference for
         //
         // Returns: A reference to the NFT
-        pub fun borrowWebshot(id: UInt64): &{Webshot.Public}? {
+        pub fun borrowWebsite(id: UInt64): &{Website.Public}? {
             if self.ownedNFTs[id] != nil {
                 let ref = &self.ownedNFTs[id] as auth &NonFungibleToken.NFT
-                return ref as! &Webshot.NFT
+                return ref as! &Website.NFT
             } else {
                 return nil
             }
@@ -200,6 +164,7 @@ pub contract Webshot: NonFungibleToken {
         }
     }
 
+
     // public function that anyone can call to create a new empty collection
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
         return <- create Collection()
@@ -207,54 +172,41 @@ pub contract Webshot: NonFungibleToken {
 
 
     // We cannot return the content here since it will be too big to run in a script
-    pub fun getWebshotIDs(address:Address) : [UInt64] {
+    pub fun getWebsiteIDs(address:Address) : [UInt64] {
 
         let account=getAccount(address)
 
-        let webshotCollection = account.getCapability(self.CollectionPublicPath)!.borrow<&Webshot.Collection{Webshot.CollectionPublic}>() ?? panic("Couldn't get collection")
+        let websiteCollection = account.getCapability(self.CollectionPublicPath)!.borrow<&Website.Collection{Website.CollectionPublic}>() ?? panic("Couldn't get collection")
 
-        return webshotCollection.getIDs();
+        return websiteCollection.getIDs();
     }
-
-
-
 
     pub resource Minter {
 
+
         pub fun mintNFT(
-            websiteAddress: Address,
-            mint: UInt64,
             name: String,
             url: String,
-            owner:String,
-            ownerAddress:Address,
+            ownerName: String,
+            ownerAddress: Address,
             description: String,
-            date: String,
-            ipfs: String,
-            content: String,
-            imgUrl: String,
-            royalty: {String: Royalty}) : @Webshot.NFT {
+            webshotMinInterval: UInt64,
+            isRecurring: Bool) : @Website.NFT {
 
             var newNFT <- create NFT(
-                id: Webshot.totalSupply,
-                content: content,
-                metadata: Metadata(
-                    websiteAddress: websiteAddress,
-                    mint: mint,
-                    name: name,
-                    url: url,
-                    owner: owner,
-                    ownerAddress: ownerAddress,
-                    description: description,
-                    date: date,
-                    ipfs: ipfs,
-                    imgUrl: imgUrl
-                ),
-                royalty: royalty
+                id: Website.totalSupply,
+                name: name,
+                url: url,
+                ownerName: ownerName,
+                ownerAddress: ownerAddress,
+                description: description,
+                webshotMinInterval: webshotMinInterval,
+                isRecurring: isRecurring
             )
-            emit Minted(id: Webshot.totalSupply, metadata: newNFT.metadata)
 
-            Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
+            emit Minted(id: Website.totalSupply, name: newNFT.name, url: newNFT.url)
+
+            Website.totalSupply = Website.totalSupply + UInt64(1)
             return <- newNFT
 
         }
@@ -286,36 +238,26 @@ pub contract Webshot: NonFungibleToken {
         }
 
         pub fun mintNFT(
-            websiteAddress: Address,
-            mint: UInt64,
             name: String,
             url: String,
-            owner:String,
-            ownerAddress:Address,
+            ownerName: String,
+            ownerAddress: Address,
             description: String,
-            date: String,
-            ipfs: String,
-            content: String,
-            imgUrl: String,
-            royalty: {String: Royalty}) : @Webshot.NFT {
+            webshotMinInterval: UInt64,
+            isRecurring: Bool) : @Website.NFT {
 
             pre {
                 self.server != nil:
                     "Cannot create art if server is not set"
             }
             return <- self.server!.borrow()!.mintNFT(
-                websiteAddress: websiteAddress,
-                mint: mint,
                 name: name,
                 url: url,
-                owner: owner,
+                ownerName: ownerName,
                 ownerAddress: ownerAddress,
                 description: description,
-                date: date,
-                ipfs: ipfs,
-                content: content,
-                imgUrl: imgUrl,
-                royalty: royalty
+                webshotMinInterval: webshotMinInterval,
+                isRecurring: isRecurring
             )
         }
 
@@ -331,12 +273,12 @@ pub contract Webshot: NonFungibleToken {
         // Initialize the total supply
         self.totalSupply = 0
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath=/public/WebshotCollection001
-        self.CollectionStoragePath=/storage/WebshotCollection001
-        self.AdministratorPublicPath= /public/WebshotAdminClient001
-        self.AdministratorStoragePath=/storage/WebshotAdminClient001
-        self.MinterStoragePath=/storage/WebshotAdmin001
-        self.MinterPrivatePath=/private/WebshotAdmin001
+        self.CollectionPublicPath=/public/WebsiteCollection001
+        self.CollectionStoragePath=/storage/WebsiteCollection001
+        self.AdministratorPublicPath= /public/WebsiteAdminClient001
+        self.AdministratorStoragePath=/storage/WebsiteAdminClient001
+        self.MinterStoragePath=/storage/WebsiteAdmin001
+        self.MinterPrivatePath=/private/WebsiteAdmin001
 
         self.account.save(<- create Minter(), to: self.MinterStoragePath)
         self.account.link<&Minter>(self.MinterPrivatePath, target: self.MinterStoragePath)

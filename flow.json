@@ -6,8 +6,10 @@
     }
   },
   "contracts": {
+    "Website": "./contracts/Website.cdc",
     "Webshot": "./contracts/Webshot.cdc",
-    "WebshotMarket": "./contracts/WebshotMarket.cdc",
+    "Marketplace": "./contracts/Marketplace.cdc",
+    "Auction": "./contracts/Auction.cdc",
     "FungibleToken": {
       "source": "./contracts/FungibleToken.cdc",
       "aliases": {
@@ -42,7 +44,7 @@
   "accounts": {
     "emulator-account": {
       "address": "0xf8d6e0586b0a20c7",
-      "keys": "11c5dfdeb0ff03a7a73ef39788563b62c89adea67bbb21ab95e5f710bd1d40b7"
+      "keys": "6aeadb5ccba5cb1c20e8228306115852e29a1d19a4b0013eee291147da493175"
     },
     "testnet-account": {
       "address": "${FLOW_ADDRESS}",
@@ -52,14 +54,18 @@
   "deployments": {
     "testnet": {
       "testnet-account": [
+        "Website",
         "Webshot",
-        "WebshotMarket"
+        "Marketplace",
+        "Auction"
       ]
     },
     "emulator": {
       "emulator-account": [
+        "Website",
         "Webshot",
-        "WebshotMarket",
+        "Marketplace",
+        "Auction",
         "NonFungibleToken"
       ]
     }

@@ -7,8 +7,14 @@
 //import Webshot from 0x0000
 
 //emulator
-import FungibleToken from 0xee82856bf20e2aa6
-import NonFungibleToken, Content, Webshot, WebshotMarket from 0x0000
+//import FungibleToken from 0xee82856bf20e2aa6
+//import NonFungibleToken, Content, Webshot, WebshotMarket from 0x0000
+
+import FungibleToken from "../contracts/FungibleToken.cdc"
+import NonFungibleToken from "../contracts/NonFungibleToken.cdc"
+import Website from "../contracts/Website.cdc"
+import Webshot from "../contracts/Webshot.cdc"
+import WebshotMarket from "../contracts/WebshotMarket.cdc"
 
 pub struct AddressStatus {
 
@@ -23,15 +29,15 @@ pub struct AddressStatus {
 }
 
 /*
-  This script will check an address and print out its FT, NFT and Versus resources
+  This script will check an address and print out its FT, NFT and Webshot resources
  */
 pub fun main(address:Address) : AddressStatus {
     // get the accounts' public address objects
     let account = getAccount(address)
     let status= AddressStatus(address)
     
-    if let vault= account.getCapability(/public/flowTokenBalance).borrow<&{FungibleToken.Balance}>() {
-       status.balance=vault.balance
+    if let vault = account.getCapability(/public/flowTokenBalance).borrow<&{FungibleToken.Balance}>() {
+       status.balance = vault.balance
     }
 
     status.webshotIDs= Webshot.getWebshotIDs(address: address)
