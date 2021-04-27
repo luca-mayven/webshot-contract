@@ -9,13 +9,11 @@ import Webshot from "./Webshot.cdc"
 
 /*
 // A standard marketplace contract only hardcoded against Webshots that pay out Royalty as stored int he Webshot NFT
- This contract is based on a mix of 2 other contracts:
+
+ This contract based on the following git repo
 
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
-
- - The Kitty items demo from the Flow team
- https://github.com/onflow/kitty-items
 */
 
 pub contract Marketplace {

@@ -8,13 +8,10 @@ import FungibleToken from "./FungibleToken.cdc"
 
  The contract that defines the Website NFT and a Collection to manage them
 
- This contract is based on a mix of 2 other contracts:
+ This contract based on the following git repo
 
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
-
- - The Kitty items demo from the Flow team
- https://github.com/onflow/kitty-items
 
 
  Each Website defines the name, URL, drop frequency, minting number for all the webshots created from it

@@ -7,13 +7,10 @@ import FungibleToken from "./FungibleToken.cdc"
 
  The contract that defines the Webshot NFT and a Collection to manage them
 
- This contract is based on a mix of 2 other contracts:
+ This contract based on the following git repo
 
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
-
- - The Kitty items demo from the Flow team
- https://github.com/onflow/kitty-items
 
 
  Each Webshot has a Metadata struct containing both the IPFS URL with the high-res copy of the screenshot, and also a small thumbnail saved on-chain in the "content" field
@@ -27,22 +24,27 @@ pub contract Webshot: NonFungibleToken {
 
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
-    pub let MinterStoragePath: StoragePath
-    pub let MinterPrivatePath: PrivatePath
-    pub let AdministratorPublicPath: PublicPath
-    pub let AdministratorStoragePath:StoragePath
 
     pub var totalSupply: UInt64
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
     pub event Deposit(id: UInt64, to: Address?)
-    pub event Minted(id: UInt64, metadata: Metadata)
+    pub event Created(id: UInt64, metadata: Metadata)
 
     //The public interface can show metadata and the content for the Webshot
     pub resource interface Public {
         pub let id: UInt64
         pub let metadata: Metadata
+
+        //these three are added because I think they will be in the standard. At least Dieter thinks it will be needed
+        pub let name: String
+        pub let description: String
+        pub let schema: String?
+
+        pub let content: String
+
+        pub let royalty: {String: Royalty}
     }
 
     //content is embedded in the NFT both as content and as URL pointing to an IPFS
@@ -55,7 +57,7 @@ pub contract Webshot: NonFungibleToken {
         pub let ownerAddress: Address
         pub let description: String
         pub let date: String
-        pub let ipfs: String
+        pub let ipfs: {String: String}
         pub let imgUrl: String
 
         init(
@@ -67,7 +69,7 @@ pub contract Webshot: NonFungibleToken {
             ownerAddress:Address,
             description: String,
             date: String,
-            ipfs: String,
+            ipfs: {String: String},
             imgUrl: String) {
                 self.websiteAddress = websiteAddress
                 self.mint = mint
@@ -94,6 +96,9 @@ pub contract Webshot: NonFungibleToken {
 
     pub resource NFT: NonFungibleToken.INFT, Public {
         pub let id: UInt64
+        pub let name: String
+        pub let description: String
+        pub let schema: String?
         pub let content: String
         pub let metadata: Metadata
         pub let royalty: {String: Royalty}
@@ -108,6 +113,9 @@ pub contract Webshot: NonFungibleToken {
             self.content = content
             self.metadata = metadata
             self.royalty = royalty
+            self.schema=nil
+            self.name = metadata.name
+            self.description=metadata.description
         }
 
 
@@ -150,7 +158,7 @@ pub contract Webshot: NonFungibleToken {
 
             emit Withdraw(id: token.id, from: self.owner?.address)
 
-            return <-token
+            return <- token
         }
 
         // deposit takes a NFT and adds it to the collections dictionary
@@ -206,104 +214,65 @@ pub contract Webshot: NonFungibleToken {
     }
 
 
+
+
+
+    pub struct WebshotData {
+        pub let id: UInt64
+        pub let metadata: Webshot.Metadata
+        init(id: UInt64, metadata: Webshot.Metadata) {
+            self.id = id
+            self.metadata = metadata
+        }
+    }
+
+    pub fun getContentForWebshot(address: Address, webshotId: UInt64) : String? {
+        let account = getAccount(address)
+        if let webshotCollection= account.getCapability(self.CollectionPublicPath).borrow<&{Webshot.CollectionPublic}>()  {
+            return webshotCollection.borrowWebshot(id: webshotId)!.content
+        }
+        return nil
+    }
+
     // We cannot return the content here since it will be too big to run in a script
-    pub fun getWebshotIDs(address:Address) : [UInt64] {
+    pub fun getWebshot(address: Address) : [WebshotData] {
 
-        let account=getAccount(address)
+        var webshotData: [WebshotData] = []
+        let account = getAccount(address)
 
-        let webshotCollection = account.getCapability(self.CollectionPublicPath)!.borrow<&Webshot.Collection{Webshot.CollectionPublic}>() ?? panic("Couldn't get collection")
-
-        return webshotCollection.getIDs();
-    }
-
-
-
-
-    pub resource Minter {
-
-        pub fun mintNFT(
-            websiteAddress: Address,
-            mint: UInt64,
-            name: String,
-            url: String,
-            owner:String,
-            ownerAddress:Address,
-            description: String,
-            date: String,
-            ipfs: String,
-            content: String,
-            imgUrl: String,
-            royalty: {String: Royalty}) : @Webshot.NFT {
-
-            var newNFT <- create NFT(
-                id: Webshot.totalSupply,
-                content: content,
-                metadata: Metadata(
-                    websiteAddress: websiteAddress,
-                    mint: mint,
-                    name: name,
-                    url: url,
-                    owner: owner,
-                    ownerAddress: ownerAddress,
-                    description: description,
-                    date: date,
-                    ipfs: ipfs,
-                    imgUrl: imgUrl
-                ),
-                royalty: royalty
-            )
-            emit Minted(id: Webshot.totalSupply, metadata: newNFT.metadata)
-
-            Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
-            return <- newNFT
-
-        }
-
-    }
-
-
-     //The interface used to add a Administrator capability to a client
-    pub resource interface AdministratorClient {
-        pub fun addCapability(_ cap: Capability<&Minter>)
-    }
-
-
-    //The admin resource that a client will create and store, then link up a public AdminClient
-    pub resource Administrator: AdministratorClient {
-
-        access(self) var server: Capability<&Minter>?
-
-        init() {
-            self.server = nil
-        }
-
-         pub fun addCapability(_ cap: Capability<&Minter>) {
-            pre {
-                cap.check() : "Invalid server capability"
-                self.server == nil : "Server already set"
+        if let webshotCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Webshot.CollectionPublic}>()  {
+            for id in webshotCollection.getIDs() {
+                var webshot = webshotCollection.borrowWebshot(id: id)
+                webshotData.append(WebshotData(
+                    id: id,
+                    metadata: webshot!.metadata
+                    ))
             }
-            self.server = cap
         }
+        return webshotData
+    }
 
-        pub fun mintNFT(
-            websiteAddress: Address,
-            mint: UInt64,
-            name: String,
-            url: String,
-            owner:String,
-            ownerAddress:Address,
-            description: String,
-            date: String,
-            ipfs: String,
-            content: String,
-            imgUrl: String,
-            royalty: {String: Royalty}) : @Webshot.NFT {
 
-            pre {
-                self.server != nil:
-                    "Cannot create art if server is not set"
-            }
-            return <- self.server!.borrow()!.mintNFT(
+
+    //This method can only be called from another contract in the same account. In Versus case it is called from the VersusAdmin that is used to administer the solution
+    access(account) fun createWebshot(
+        websiteAddress: Address,
+        mint: UInt64,
+        name: String,
+        url: String,
+        owner:String,
+        ownerAddress:Address,
+        description: String,
+        date: String,
+        ipfs: {String: String},
+        content: String,
+        imgUrl: String,
+        royalty: {String: Royalty}) : @Webshot.NFT {
+        //TODO Check frequency limitations from parent website and make sure they are respected here. Also check mint number within same website
+        var newNFT <- create NFT(
+            id: Webshot.totalSupply,
+            content: content,
+            metadata: Metadata(
                 websiteAddress: websiteAddress,
                 mint: mint,
                 name: name,
@@ -313,33 +282,30 @@ pub contract Webshot: NonFungibleToken {
                 description: description,
                 date: date,
                 ipfs: ipfs,
-                content: content,
-                imgUrl: imgUrl,
-                royalty: royalty
-            )
-        }
+                imgUrl: imgUrl
+            ),
+            royalty: royalty
+        )
+        emit Created(id: Webshot.totalSupply, metadata: newNFT.metadata)
+
+        Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
+        return <- newNFT
+
 
     }
 
-    //make it possible for a user that wants to be an admin to create the client
-    pub fun createAdminClient(): @Administrator {
-        return <- create Administrator()
-    }
 
 
 	init() {
-        // Initialize the total supply
-        self.totalSupply = 0
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath=/public/WebshotCollection001
-        self.CollectionStoragePath=/storage/WebshotCollection001
-        self.AdministratorPublicPath= /public/WebshotAdminClient001
-        self.AdministratorStoragePath=/storage/WebshotAdminClient001
-        self.MinterStoragePath=/storage/WebshotAdmin001
-        self.MinterPrivatePath=/private/WebshotAdmin001
+        self.CollectionPublicPath = /public/WebshotCollection001
+        self.CollectionStoragePath = /storage/WebshotCollection001
 
-        self.account.save(<- create Minter(), to: self.MinterStoragePath)
-        self.account.link<&Minter>(self.MinterPrivatePath, target: self.MinterStoragePath)
+        // Initialize the total supply
+        self.totalSupply = (0 as UInt64)
+
+        self.account.save<@NonFungibleToken.Collection>(<- Webshot.createEmptyCollection(), to: Webshot.CollectionStoragePath)
+        self.account.link<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath, target: Webshot.CollectionStoragePath)
 
         emit ContractInitialized()
 	}
