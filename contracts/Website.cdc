@@ -23,17 +23,13 @@ pub contract Website: NonFungibleToken {
 
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
-    pub let MinterStoragePath: StoragePath
-    pub let MinterPrivatePath: PrivatePath
-    pub let AdministratorPublicPath: PublicPath
-    pub let AdministratorStoragePath:StoragePath
 
     pub var totalSupply: UInt64
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
     pub event Deposit(id: UInt64, to: Address?)
-    pub event Minted(id: UInt64, name: String, url: String)
+    pub event Created(id: UInt64, name: String, url: String)
 
     pub resource interface Public {
         pub let id: UInt64
@@ -168,117 +164,112 @@ pub contract Website: NonFungibleToken {
     }
 
 
-    // We cannot return the content here since it will be too big to run in a script
-    pub fun getWebsiteIDs(address:Address) : [UInt64] {
-
-        let account=getAccount(address)
-
-        let websiteCollection = account.getCapability(self.CollectionPublicPath)!.borrow<&Website.Collection{Website.CollectionPublic}>() ?? panic("Couldn't get collection")
-
-        return websiteCollection.getIDs();
-    }
-
-    pub resource Minter {
 
 
-        pub fun mintNFT(
+
+
+
+
+
+
+    pub struct WebsiteData {
+        pub let id: UInt64
+        pub let name: String
+        pub let url: String
+        pub let ownerName: String
+        pub let ownerAddress: Address
+        pub let description: String
+        pub let webshotMinInterval: UInt64
+        pub let isRecurring: Bool
+        pub let totalMinted: UInt64
+
+        init(
+            id: UInt64,
             name: String,
             url: String,
             ownerName: String,
             ownerAddress: Address,
             description: String,
             webshotMinInterval: UInt64,
-            isRecurring: Bool) : @Website.NFT {
-
-            var newNFT <- create NFT(
-                id: Website.totalSupply,
-                name: name,
-                url: url,
-                ownerName: ownerName,
-                ownerAddress: ownerAddress,
-                description: description,
-                webshotMinInterval: webshotMinInterval,
-                isRecurring: isRecurring
-            )
-
-            emit Minted(id: Website.totalSupply, name: newNFT.name, url: newNFT.url)
-
-            Website.totalSupply = Website.totalSupply + UInt64(1)
-            return <- newNFT
-
+            isRecurring: Bool,
+            totalMinted: UInt64) {
+            self.id = id
+            self.name = name
+            self.url = url
+            self.ownerName = ownerName
+            self.ownerAddress = ownerAddress
+            self.description = description
+            self.webshotMinInterval = webshotMinInterval
+            self.isRecurring = isRecurring
+            self.totalMinted = totalMinted
         }
-
     }
 
 
-     //The interface used to add a Administrator capability to a client
-    pub resource interface AdministratorClient {
-        pub fun addCapability(_ cap: Capability<&Minter>)
-    }
+    pub fun getWebsite(address: Address) : [WebsiteData] {
 
+        var websiteData: [WebsiteData] = []
+        let account = getAccount(address)
 
-    //The admin resource that a client will create and store, then link up a public AdminClient
-    pub resource Administrator: AdministratorClient {
-
-        access(self) var server: Capability<&Minter>?
-
-        init() {
-            self.server = nil
-        }
-
-         pub fun addCapability(_ cap: Capability<&Minter>) {
-            pre {
-                cap.check() : "Invalid server capability"
-                self.server == nil : "Server already set"
+        if let websiteCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Website.CollectionPublic}>()  {
+            for id in websiteCollection.getIDs() {
+                var website = websiteCollection.borrowWebsite(id: id)
+                websiteData.append(WebsiteData(
+                    id: id,
+                    name: website!.name,
+                    url: website!.url,
+                    ownerName: website!.ownerName,
+                    ownerAddress: website!.ownerAddress,
+                    description: website!.description,
+                    webshotMinInterval: website!.webshotMinInterval,
+                    isRecurring: website!.isRecurring,
+                    totalMinted: website!.totalMinted
+                    ))
             }
-            self.server = cap
         }
-
-        pub fun mintNFT(
-            name: String,
-            url: String,
-            ownerName: String,
-            ownerAddress: Address,
-            description: String,
-            webshotMinInterval: UInt64,
-            isRecurring: Bool) : @Website.NFT {
-
-            pre {
-                self.server != nil:
-                    "Cannot create art if server is not set"
-            }
-            return <- self.server!.borrow()!.mintNFT(
-                name: name,
-                url: url,
-                ownerName: ownerName,
-                ownerAddress: ownerAddress,
-                description: description,
-                webshotMinInterval: webshotMinInterval,
-                isRecurring: isRecurring
-            )
-        }
-
+        return websiteData
     }
 
-    //make it possible for a user that wants to be an admin to create the client
-    pub fun createAdminClient(): @Administrator {
-        return <- create Administrator()
+
+
+    //This method can only be called from another contract in the same account. In Website case it is called from the AuctionAdmin that is used to administer the solution
+    access(account) fun createWebsite(
+        name: String,
+        url: String,
+        ownerName: String,
+        ownerAddress: Address,
+        description: String,
+        webshotMinInterval: UInt64,
+        isRecurring: Bool) : @Website.NFT {
+
+        var newNFT <- create NFT(
+            id: Website.totalSupply,
+            name: name,
+            url: url,
+            ownerName: ownerName,
+            ownerAddress: ownerAddress,
+            description: description,
+            webshotMinInterval: webshotMinInterval,
+            isRecurring: isRecurring
+        )
+        emit Created(id: newNFT.id, name: newNFT.name, url: newNFT.url)
+
+        Website.totalSupply = Website.totalSupply + UInt64(1)
+        return <- newNFT
     }
+
 
 
 	init() {
-        // Initialize the total supply
-        self.totalSupply = 0
         //TODO: REMOVE SUFFIX BEFORE RELEASE
         self.CollectionPublicPath=/public/WebsiteCollection001
         self.CollectionStoragePath=/storage/WebsiteCollection001
-        self.AdministratorPublicPath= /public/WebsiteAdminClient001
-        self.AdministratorStoragePath=/storage/WebsiteAdminClient001
-        self.MinterStoragePath=/storage/WebsiteAdmin001
-        self.MinterPrivatePath=/private/WebsiteAdmin001
 
-        self.account.save(<- create Minter(), to: self.MinterStoragePath)
-        self.account.link<&Minter>(self.MinterPrivatePath, target: self.MinterStoragePath)
+        // Initialize the total supply
+        self.totalSupply = 0
+
+        self.account.save<@NonFungibleToken.Collection>(<- Website.createEmptyCollection(), to: Website.CollectionStoragePath)
+        self.account.link<&{Website.CollectionPublic}>(Website.CollectionPublicPath, target: Website.CollectionStoragePath)
 
         emit ContractInitialized()
 	}

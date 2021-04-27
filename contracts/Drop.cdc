@@ -30,7 +30,7 @@ import Website from "./Website.cdc"
  */
 
 
-pub contract Auction {
+pub contract Drop {
 
 
     //A set of capability and storage paths used in this contract
@@ -178,7 +178,7 @@ pub contract Auction {
         access(contract) var extensionOnLateBid: UFix64
 
         //Store metadata here would allow us to show this after the drop has ended. The NFTS are gone then but the  metadata remains here
-        pub let metadata: Art.Metadata
+        pub let metadata: Webshot.Metadata
 
         init(
             NFT: @Webshot.NFT,
@@ -190,8 +190,8 @@ pub contract Auction {
             ownerCollectionCap: Capability<&{Webshot.CollectionPublic}>,
             ownerVaultCap: Capability<&{FungibleToken.Receiver}>) {
 
-            Auction.totalAuctions = Auction.totalAuctions + (1 as UInt64)
-            self.auctionId = Auction.totalAuctions
+            Drop.totalAuctions = Drop.totalAuctions + (1 as UInt64)
+            self.auctionId = Drop.totalAuctions
             self.firstBidBlock = nil
             self.settledAt = nil
             self.metadata = NFT.metadata
@@ -212,9 +212,6 @@ pub contract Auction {
         }
 
 
-        pub fun metadata() : Webshot.Metadata? {
-            return self.NFT?.getMetadata()
-        }
 
         // sendNFT sends the NFT to the Collection belonging to the provided Capability
         access(contract) fun sendNFT(_ capability: Capability<&{Webshot.CollectionPublic}>) {
@@ -286,7 +283,7 @@ pub contract Auction {
 
          pub fun cancelAuction() {
             self.returnAuctionItemToOwner()
-            emit AuctionCanceled(auctionId: self.auctionId)
+            emit AuctionCancelled(auctionId: self.auctionId)
         }
 
         //this can be negative if is expired
@@ -465,7 +462,6 @@ pub contract Auction {
              startTime: UFix64,
              startPrice: UFix64,
              vaultCap: Capability<&{FungibleToken.Receiver}>,
-             webshotAdmin: &Webshot.Administrator,
              duration: UFix64,
              extensionOnLateBid:UFix64)
 
@@ -482,13 +478,16 @@ pub contract Auction {
 
         pub let marketplaceVault: Capability<&{FungibleToken.Receiver}>
 
+        //NFTs that are not sold are put here when a bid is settled.
+        pub let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>
+
 
         init(
             marketplaceVault: Capability<&{FungibleToken.Receiver}>,
             marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>,
             cutPercentage: UFix64,
         ) {
-            self.marketplaceNFTUnsold=marketplaceNFTUnsold
+            self.marketplaceNFTUnsold = marketplaceNFTUnsold
             self.cutPercentage = cutPercentage
             self.marketplaceVault = marketplaceVault
             self.auctions <- {}
@@ -558,7 +557,7 @@ pub contract Auction {
         //get the webshot for this auction
         pub fun getWebshot(auctionId: UInt64): Webshot.Metadata {
             let auction = self.getAuction(auctionId)
-            return auction.metadata()!
+            return auction.metadata
         }
 
         //settle an auction
@@ -589,8 +588,8 @@ pub contract Auction {
 
 
     // Get the Webshot stored with a specific Auction
-    pub fun getWebshotForAuction(_ auctionId: UInt64) : String? {
-        let auctionCap = Auction.account.getCapability<&{Auction.AuctionPublic}>(self.CollectionPublicPath)
+    pub fun getWebshotForAuction(_ auctionId: UInt64) : Webshot.Metadata? {
+        let auctionCap = Drop.account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)
         if let auction = auctionCap.borrow()  {
             return auction.getWebshot(auctionId: auctionId)
         }
@@ -598,15 +597,15 @@ pub contract Auction {
     }
 
     // Get the active Auctions
-    pub fun getAuctions() : [Auction.AuctionStatus]{
-        let account = Auction.account
-        let auctionCap = account.getCapability<&{Auction.AuctionPublic}>(self.CollectionPublicPath)!
+    pub fun getAuctions() : [Drop.AuctionStatus]{
+        let account = Drop.account
+        let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)!
         return auctionCap.borrow()!.getAllStatuses().values
      }
 
-    pub fun getAuction(_ auctionId: UInt64) : Auction.AuctionStatus? {
-      let account = Auction.account
-      let auctionCap = account.getCapability<&{Auction.AuctionPublic}>(self.CollectionPublicPath)
+    pub fun getAuction(_ auctionId: UInt64) : Drop.AuctionStatus? {
+      let account = Drop.account
+      let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)
       if let auction = auctionCap.borrow() {
           return auction.getStatus(auctionId: auctionId)
       }
@@ -618,19 +617,19 @@ pub contract Auction {
 
     //The interface used to add a Administrator capability to a client
     pub resource interface AdminPublic {
-        pub fun addCapability(_ cap: Capability<&Auction.AuctionCollection>)
+        pub fun addCapability(_ cap: Capability<&Drop.AuctionCollection>)
     }
 
     //The versus admin resource that a client will create and store, then link up a public VersusAdminClient
     pub resource Admin: AdminPublic {
 
-        access(self) var server: Capability<&Auction.AuctionCollection>?
+        access(self) var server: Capability<&Drop.AuctionCollection>?
 
         init() {
             self.server = nil
         }
 
-        pub fun addCapability(_ cap: Capability<&Auction.AuctionCollection>) {
+        pub fun addCapability(_ cap: Capability<&Drop.AuctionCollection>) {
             pre {
                 cap.check() : "Invalid server capability"
                 self.server == nil : "Server already set"
@@ -648,7 +647,7 @@ pub contract Auction {
            self.server!.borrow()!.settle(auctionId)
 
           //since settling will return all items not sold to the NFTTrash, we take out the trash here.
-          let webshotC = Auction.account.borrow<&NonFungibleToken.Collection>(from: Webshot.CollectionStoragePath)!
+          let webshotC = Drop.account.borrow<&NonFungibleToken.Collection>(from: Webshot.CollectionStoragePath)!
           for key in webshotC.ownedNFTs.keys{
             log("burning webshot with key=".concat(key.toString()))
             destroy <- webshotC.ownedNFTs.remove(key: key)
@@ -660,9 +659,38 @@ pub contract Auction {
                 self.server != nil : "Your client has not been linked to the server"
             }
 
-            let auctionC: &Auction.AuctionCollection = self.server!.borrow()!
+            let auctionC: &Drop.AuctionCollection = self.server!.borrow()!
             auctionC.cutPercentage = num
         }
+
+        //This method can only be called from another contract in the same account. In Website case it is called from the AuctionAdmin that is used to administer the solution
+        pub fun createWebsite(
+            name: String,
+            url: String,
+            ownerName: String,
+            ownerAddress: Address,
+            description: String,
+            webshotMinInterval: UInt64,
+            isRecurring: Bool) : @Website.NFT {
+
+            pre {
+                self.server != nil : "Your client has not been linked to the server"
+            }
+
+            let website <- Website.createWebsite(
+                name: name,
+                url: url,
+                ownerName: ownerName,
+                ownerAddress: ownerAddress,
+                description: description,
+                webshotMinInterval: webshotMinInterval,
+                isRecurring: isRecurring)
+            return <- website
+
+        }
+
+
+
 
         pub fun createAuction(
           nft: @NonFungibleToken.NFT,
@@ -687,8 +715,6 @@ pub contract Auction {
           )
         }
 
-
-
         // A stored Transaction to mintWebshot on Auction to a given artist
         pub fun mintWebshot(
             websiteAddress: Address,
@@ -712,10 +738,10 @@ pub contract Auction {
 
 
             let ownerWallet = ownerAccount.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
-            let webshotWallet =  Auction.account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+            let webshotWallet =  Drop.account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
 
             let royalty = {
-                "owner" : Webshot.Royalty(wallet: artistWallet, cut: 0.05),
+                "owner" : Webshot.Royalty(wallet: ownerWallet, cut: 0.05),
                 "marketplace" : Webshot.Royalty(wallet: webshotWallet, cut: 0.025)
             }
 
@@ -776,14 +802,14 @@ pub contract Auction {
           pre {
             self.server != nil : "Your client has not been linked to the server"
           }
-          return Auction.account.borrow<&FungibleToken.Vault>(from: /storage/flowTokenVault)!
+          return Drop.account.borrow<&FungibleToken.Vault>(from: /storage/flowTokenVault)!
         }
 
         pub fun getWebshotCollection() : &NonFungibleToken.Collection {
           pre {
             self.server != nil : "Your client has not been linked to the server"
           }
-          return Auction.account.borrow<&NonFungibleToken.Collection>(from: Webshot.CollectionStoragePath)!
+          return Drop.account.borrow<&NonFungibleToken.Collection>(from: Webshot.CollectionStoragePath)!
         }
 
     }
@@ -811,17 +837,17 @@ pub contract Auction {
         let account=self.account
 
         let marketplaceReceiver = account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
-        let marketplaceNFTTrash: Capability<&{Webshot.CollectionPublic}> = account.getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)
+        let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}> = account.getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)
 
         log("Setting up auction capability")
         let collection <- create AuctionCollection(
             marketplaceVault: marketplaceReceiver,
-            marketplaceNFTTrash: marketplaceNFTTrash,
+            marketplaceNFTUnsold: marketplaceNFTUnsold,
             cutPercentage: 0.2
         )
-        account.save(<-collection, to: Auction.CollectionStoragePath)
-        account.link<&{Auction.AuctionPublic}>(Auction.CollectionPublicPath, target: Auction.CollectionStoragePath)
-        account.link<&Auction.AuctionCollection>(Auction.CollectionPrivatePath, target: Auction.CollectionStoragePath)
+        account.save(<-collection, to: Drop.CollectionStoragePath)
+        account.link<&{Drop.AuctionPublic}>(Drop.CollectionPublicPath, target: Drop.CollectionStoragePath)
+        account.link<&Drop.AuctionCollection>(Drop.CollectionPrivatePath, target: Drop.CollectionStoragePath)
 
     }
 }

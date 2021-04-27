@@ -9,7 +9,7 @@
     "Website": "./contracts/Website.cdc",
     "Webshot": "./contracts/Webshot.cdc",
     "Marketplace": "./contracts/Marketplace.cdc",
-    "Auction": "./contracts/Auction.cdc",
+    "Drop": "./contracts/Drop.cdc",
     "FungibleToken": {
       "source": "./contracts/FungibleToken.cdc",
       "aliases": {
@@ -57,7 +57,7 @@
         "Website",
         "Webshot",
         "Marketplace",
-        "Auction"
+        "Drop"
       ]
     },
     "emulator": {
@@ -65,7 +65,7 @@
         "Website",
         "Webshot",
         "Marketplace",
-        "Auction",
+        "Drop",
         "NonFungibleToken"
       ]
     }

@@ -254,7 +254,7 @@ pub contract Webshot: NonFungibleToken {
 
 
 
-    //This method can only be called from another contract in the same account. In Versus case it is called from the VersusAdmin that is used to administer the solution
+    //This method can only be called from another contract in the same account. In Webshot case it is called from the AuctionAdmin that is used to administer the solution
     access(account) fun createWebshot(
         websiteAddress: Address,
         mint: UInt64,
@@ -290,8 +290,6 @@ pub contract Webshot: NonFungibleToken {
 
         Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
         return <- newNFT
-
-
     }
 
 
