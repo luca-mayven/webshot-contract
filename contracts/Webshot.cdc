@@ -2,6 +2,7 @@ import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
 //import FungibleToken from 0x9a0766d93b6608b7
 //import FUSD from 0xe223d8a629e49c68
+import Website from "./Website.cdc"
 
 /*
 
@@ -50,28 +51,31 @@ pub contract Webshot: NonFungibleToken {
     //content is embedded in the NFT both as content and as URL pointing to an IPFS
     pub struct Metadata {
         pub let websiteAddress: Address
+        pub let websiteId: UInt64
         pub let mint: UInt64
         pub let name: String
         pub let url: String
         pub let owner: String
         pub let ownerAddress: Address
         pub let description: String
-        pub let date: String
+        pub let date: UFix64
         pub let ipfs: {String: String}
         pub let imgUrl: String
 
         init(
             websiteAddress: Address,
+            websiteId: UInt64,
             mint: UInt64
             name: String,
             url: String,
             owner: String,
             ownerAddress:Address,
             description: String,
-            date: String,
+            date: UFix64,
             ipfs: {String: String},
             imgUrl: String) {
                 self.websiteAddress = websiteAddress
+                self.websiteId = websiteId
                 self.mint = mint
                 self.name = name
                 self.url = url
@@ -257,23 +261,25 @@ pub contract Webshot: NonFungibleToken {
     //This method can only be called from another contract in the same account. In Webshot case it is called from the AuctionAdmin that is used to administer the solution
     access(account) fun createWebshot(
         websiteAddress: Address,
+        websiteId: UInt64,
         mint: UInt64,
         name: String,
         url: String,
         owner:String,
         ownerAddress:Address,
         description: String,
-        date: String,
+        date: UFix64,
         ipfs: {String: String},
         content: String,
         imgUrl: String,
         royalty: {String: Royalty}) : @Webshot.NFT {
-        //TODO Check frequency limitations from parent website and make sure they are respected here. Also check mint number within same website
+
         var newNFT <- create NFT(
             id: Webshot.totalSupply,
             content: content,
             metadata: Metadata(
                 websiteAddress: websiteAddress,
+                websiteId: websiteId,
                 mint: mint,
                 name: name,
                 url: url,
@@ -289,6 +295,10 @@ pub contract Webshot: NonFungibleToken {
         emit Created(id: Webshot.totalSupply, metadata: newNFT.metadata)
 
         Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
+
+        Website.totalMintedWebshots[websiteId] = Website.totalMintedWebshots[websiteId]! + UInt64(1)
+        Website.lastWebshotMintedAt[websiteId] = date
+
         return <- newNFT
     }
 

@@ -157,6 +157,41 @@ pub contract Marketplace {
         }
     }
 
+
+    pub struct SaleData {
+            pub let id: UInt64
+            pub let price: UFix64
+
+            init(
+                id: UInt64,
+                price: UFix64){
+
+                self.id = id
+                self.price = price
+            }
+        }
+
+
+        pub fun getSale(address: Address) : [SaleData] {
+            var saleData: [SaleData] = []
+            let account = getAccount(address)
+
+            if let saleCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Marketplace.SalePublic}>()  {
+                for id in saleCollection.getIDs() {
+                    let price = saleCollection.idPrice(tokenID: id)
+                    saleData.append(SaleData(
+                        id: id,
+                        price: price!
+                        ))
+                }
+            }
+            return saleData
+        }
+
+
+
+
+
     // createCollection returns a new collection resource to the caller
     pub fun createSaleCollection(ownerVault: Capability<&{FungibleToken.Receiver}>): @SaleCollection {
         return <- create SaleCollection(vault: ownerVault)

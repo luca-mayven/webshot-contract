@@ -718,23 +718,18 @@ pub contract Drop {
         // A stored Transaction to mintWebshot on Auction to a given artist
         pub fun mintWebshot(
             websiteAddress: Address,
-            mint: UInt64,
-            name: String,
-            url: String,
-            owner: String,
-            ownerAddress: Address,
-            description: String,
-            date: String,
+            websiteId: UInt64,
             ipfs: {String: String},
             content: String,
-            imgUrl: String
-            ) : @Webshot.NFT {
+            imgUrl: String) : @Webshot.NFT {
 
             pre {
                 self.server != nil : "Your client has not been linked to the server"
             }
 
-            let ownerAccount = getAccount(ownerAddress)
+            let websiteData = Website.getWebsiteById(address: websiteAddress, id: websiteId)!
+
+            let ownerAccount = getAccount(websiteData.ownerAddress)
 
 
             let ownerWallet = ownerAccount.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
@@ -747,13 +742,7 @@ pub contract Drop {
 
             return <- self.mintWebshotWithRoyalty(
                 websiteAddress: websiteAddress,
-                mint: mint,
-                name: name,
-                url: url,
-                owner: owner,
-                ownerAddress: ownerAddress,
-                description: description,
-                date: date,
+                websiteId: websiteId,
                 ipfs: ipfs,
                 content: content,
                 imgUrl: imgUrl,
@@ -763,13 +752,7 @@ pub contract Drop {
         // A stored Transaction to mintWebshot on Auction to a given artist
         pub fun mintWebshotWithRoyalty(
             websiteAddress: Address,
-            mint: UInt64,
-            name: String,
-            url: String,
-            owner: String,
-            ownerAddress: Address,
-            description: String,
-            date: String,
+            websiteId: UInt64,
             ipfs: {String: String},
             content: String,
             imgUrl: String,
@@ -778,21 +761,34 @@ pub contract Drop {
 
             pre {
                 self.server != nil : "Your client has not been linked to the server"
+                Website.lastWebshotMintedAt[websiteId] != nil : "Can't find Website in Collection"
+                Website.totalMintedWebshots[websiteId] != nil : "Can't find Website in Collection"
+            }
+
+            let websiteData = Website.getWebsiteById(address: websiteAddress, id: websiteId)!
+
+            let currentTime = getCurrentBlock().timestamp
+
+
+            if(UInt64(Website.lastWebshotMintedAt[websiteId]!) + websiteData.webshotMinInterval > UInt64(currentTime)){
+                panic("You are trying to mint a Webshot too soon!")
             }
 
             let webshot <- Webshot.createWebshot(
                 websiteAddress: websiteAddress,
-                mint: mint,
-                name: name,
-                url: url,
-                owner: owner,
-                ownerAddress: ownerAddress,
-                description: description,
-                date: date,
+                websiteId: websiteId,
+                mint: Website.totalMintedWebshots[websiteId]!,
+                name: websiteData.name,
+                url: websiteData.url,
+                owner: websiteData.ownerName,
+                ownerAddress: websiteData.ownerAddress,
+                description: websiteData.description,
+                date: currentTime,
                 ipfs: ipfs,
                 content: content,
                 imgUrl: imgUrl,
                 royalty: royalty)
+
             return <- webshot
         }
 
@@ -834,7 +830,7 @@ pub contract Drop {
 
         self.totalAuctions = (0 as UInt64)
 
-        let account=self.account
+        let account = self.account
 
         let marketplaceReceiver = account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
         let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}> = account.getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)

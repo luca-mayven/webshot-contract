@@ -25,6 +25,8 @@ pub contract Website: NonFungibleToken {
     pub let CollectionPublicPath: PublicPath
 
     pub var totalSupply: UInt64
+    pub var totalMintedWebshots: { UInt64: UInt64}
+    pub var lastWebshotMintedAt: { UInt64: UFix64}
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -40,7 +42,6 @@ pub contract Website: NonFungibleToken {
         pub let description: String
         pub let webshotMinInterval: UInt64
         pub let isRecurring: Bool
-        access(contract) var totalMinted: UInt64
     }
 
     pub resource NFT: NonFungibleToken.INFT, Public {
@@ -52,7 +53,6 @@ pub contract Website: NonFungibleToken {
         pub let description: String
         pub let webshotMinInterval: UInt64
         pub let isRecurring: Bool
-        access(contract) var totalMinted: UInt64
 
         init(
             id: UInt64,
@@ -66,7 +66,6 @@ pub contract Website: NonFungibleToken {
                     ) {
 
             self.id = id
-            self.totalMinted = 0
             self.name = name
             self.url = url
             self.ownerName = ownerName
@@ -181,7 +180,8 @@ pub contract Website: NonFungibleToken {
         pub let description: String
         pub let webshotMinInterval: UInt64
         pub let isRecurring: Bool
-        pub let totalMinted: UInt64
+        pub let totalMintedWebshots: UInt64
+        pub let lastWebshotMintedAt: UFix64
 
         init(
             id: UInt64,
@@ -191,8 +191,7 @@ pub contract Website: NonFungibleToken {
             ownerAddress: Address,
             description: String,
             webshotMinInterval: UInt64,
-            isRecurring: Bool,
-            totalMinted: UInt64) {
+            isRecurring: Bool) {
             self.id = id
             self.name = name
             self.url = url
@@ -201,13 +200,13 @@ pub contract Website: NonFungibleToken {
             self.description = description
             self.webshotMinInterval = webshotMinInterval
             self.isRecurring = isRecurring
-            self.totalMinted = totalMinted
+            self.totalMintedWebshots = Website.totalMintedWebshots[id]!
+            self.lastWebshotMintedAt = Website.lastWebshotMintedAt[id]!
         }
     }
 
 
     pub fun getWebsite(address: Address) : [WebsiteData] {
-
         var websiteData: [WebsiteData] = []
         let account = getAccount(address)
 
@@ -222,14 +221,33 @@ pub contract Website: NonFungibleToken {
                     ownerAddress: website!.ownerAddress,
                     description: website!.description,
                     webshotMinInterval: website!.webshotMinInterval,
-                    isRecurring: website!.isRecurring,
-                    totalMinted: website!.totalMinted
+                    isRecurring: website!.isRecurring
                     ))
             }
         }
         return websiteData
     }
 
+    pub fun getWebsiteById(address: Address, id: UInt64) : WebsiteData? {
+        var websiteData: [WebsiteData] = []
+        let account = getAccount(address)
+
+        if let websiteCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Website.CollectionPublic}>()  {
+            if let website = websiteCollection.borrowWebsite(id: id) {
+                return WebsiteData(
+                    id: id,
+                    name: website.name,
+                    url: website.url,
+                    ownerName: website.ownerName,
+                    ownerAddress: website.ownerAddress,
+                    description: website.description,
+                    webshotMinInterval: website.webshotMinInterval,
+                    isRecurring: website.isRecurring
+                )
+            }
+        }
+        return nil
+    }
 
 
     //This method can only be called from another contract in the same account. In Website case it is called from the AuctionAdmin that is used to administer the solution
@@ -254,7 +272,11 @@ pub contract Website: NonFungibleToken {
         )
         emit Created(id: newNFT.id, name: newNFT.name, url: newNFT.url)
 
+        Website.totalMintedWebshots[newNFT.id] = UInt64(0)
+        Website.lastWebshotMintedAt[newNFT.id] = UFix64(0)
+
         Website.totalSupply = Website.totalSupply + UInt64(1)
+
         return <- newNFT
     }
 
@@ -267,6 +289,8 @@ pub contract Website: NonFungibleToken {
 
         // Initialize the total supply
         self.totalSupply = 0
+        self.totalMintedWebshots = {}
+        self.lastWebshotMintedAt = {}
 
         self.account.save<@NonFungibleToken.Collection>(<- Website.createEmptyCollection(), to: Website.CollectionStoragePath)
         self.account.link<&{Website.CollectionPublic}>(Website.CollectionPublicPath, target: Website.CollectionStoragePath)
