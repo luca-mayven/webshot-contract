@@ -9,8 +9,8 @@ import Marketplace from "../../contracts/Marketplace.cdc"
 import Drop from "../../contracts/Drop.cdc"
 
 
-//this transaction is run as the account that will host and own the marketplace to set up the
-//webshotAdmin client and create the empty content and webshot collection
+//this transaction mints new Flow token to an account
+
 transaction(
     recipient: Address,
     amount: UFix64) {

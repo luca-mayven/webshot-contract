@@ -14,12 +14,14 @@ pub struct AddressStatus {
   pub(set) var webshotData: [Webshot.WebshotData]
   pub(set) var websiteData: [Website.WebsiteData]
   pub(set) var saleData: [Marketplace.SaleData]
+  pub(set) var auctionData: [Drop.AuctionStatus]
   init (_ address:Address) {
     self.address=address
     self.balance= 0.0
     self.webshotData= []
     self.websiteData= []
     self.saleData = []
+    self.auctionData = []
   }
 }
 
@@ -37,6 +39,7 @@ pub fun main(address:Address) : AddressStatus {
     status.webshotData = Webshot.getWebshot(address: address)
     status.websiteData = Website.getWebsite(address: address)
     status.saleData = Marketplace.getSale(address: address)
+    status.auctionData = Drop.getAuctions()
     
     return status
 

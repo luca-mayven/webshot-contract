@@ -8,21 +8,18 @@ import Marketplace from "../../contracts/Marketplace.cdc"
 import Drop from "../../contracts/Drop.cdc"
 
 
-//this transaction destroys and auction
+//this transaction places a bid for a specific auction
+transaction(auctionId: UInt64) {
 
-transaction(id: UInt64) {
-
-    let auctionCollection: &Drop.AuctionCollection
+    let client: &Drop.Admin
 
     prepare(account: AuthAccount) {
 
-        self.auctionCollection = account.borrow<&Drop.AuctionCollection>(from: Drop.CollectionStoragePath)!
+        self.client = account.borrow<&Drop.Admin>(from: Drop.WebshotAdminStoragePath) ?? panic("could not load webshot admin")
     }
 
     execute {
-
-        let auction <- self.auctionCollection.auctions[id] <- nil
-        destroy auction
-
+        self.client.settle(auctionId)
     }
+
 }

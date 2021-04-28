@@ -8,27 +8,20 @@ import Marketplace from "../../contracts/Marketplace.cdc"
 import Drop from "../../contracts/Drop.cdc"
 
 
-//this transaction is run as the account that will host and own the marketplace to set up the
-//webshotAdmin client and create the empty content and webshot collection
+//this transaction creates a new webshot
 transaction(
     websiteAddress: Address,
     websiteId: UInt64,
     ipfs: {String: String},
     content: String,
-    imgUrl: String,
-    minimumBidIncrement: UFix64,
-    startPrice: UFix64,
-    duration: UFix64,
-    extensionOnLateBid:UFix64) {
+    imgUrl: String) {
 
     let client: &Drop.Admin
     let ownerCollection: Capability<&{Webshot.CollectionPublic}>
-    let ownerWallet: Capability<&{FungibleToken.Receiver}>
 
     prepare(account: AuthAccount) {
         self.client = account.borrow<&Drop.Admin>(from: Drop.WebshotAdminStoragePath) ?? panic("could not load webshot admin")
         self.ownerCollection = getAccount(websiteAddress).getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)
-        self.ownerWallet =  getAccount(websiteAddress).getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
     }
 
     execute {
@@ -39,20 +32,6 @@ transaction(
             content: content,
             imgUrl: imgUrl
             )
-
-        self.client.createDrop(
-            nft: <- webshot,
-            minimumBidIncrement: minimumBidIncrement,
-            startTime: getCurrentBlock().timestamp,
-            startPrice: startPrice,
-            vaultCap: self.ownerWallet,
-            duration: duration,
-            extensionOnLateBid: extensionOnLateBid)
-
-        let content = self.client.getContent()
-        log(content.contents.keys)
-
-        let wallet = self.client.getFlowWallet()
-        log(wallet.balance)
+        self.ownerCollection.borrow()!.deposit(token: <- webshot)
     }
 }

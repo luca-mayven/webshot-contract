@@ -56,7 +56,7 @@ pub contract Drop {
     pub event AuctionCreated(auctionId: UInt64, name: String, owner: String, ownerAddress: Address)
 
     //emitted when an Auction is settled
-    pub event AuctionSettled(auctionId: UInt64, name: String, owner: String, price: UFix64)
+    pub event AuctionSettled(auctionId: UInt64, price: UFix64)
 
     //emitted when an Auction is destroyed
     pub event AuctionCancelled(auctionId: UInt64)
@@ -268,9 +268,8 @@ pub contract Drop {
             self.auctionSettled = true
 
             self.settledAt = getCurrentBlock().height
-            let auctionStatus = self.getAuctionStatus()
 
-            emit AuctionSettled(auctionId: self.auctionId, name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner, price: self.currentPrice)
+            emit AuctionSettled(auctionId: self.auctionId, price: self.currentPrice)
         }
 
         pub fun returnAuctionItemToOwner() {
@@ -646,12 +645,6 @@ pub contract Drop {
            }
            self.server!.borrow()!.settle(auctionId)
 
-          //since settling will return all items not sold to the NFTTrash, we take out the trash here.
-          let webshotC = Drop.account.borrow<&NonFungibleToken.Collection>(from: Webshot.CollectionStoragePath)!
-          for key in webshotC.ownedNFTs.keys{
-            log("burning webshot with key=".concat(key.toString()))
-            destroy <- webshotC.ownedNFTs.remove(key: key)
-          }
         }
 
         pub fun setAuctionCut(_ num:UFix64) {

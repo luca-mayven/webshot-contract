@@ -108,12 +108,15 @@ pub contract Webshot: NonFungibleToken {
         pub let royalty: {String: Royalty}
 
         init(
-            id: UInt64,
             content: String,
             metadata: Metadata,
             royalty: {String: Royalty}) {
 
-            self.id = id
+            Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
+            Website.totalMintedWebshots[metadata.websiteId] = Website.totalMintedWebshots[metadata.websiteId]! + UInt64(1)
+            Website.lastWebshotMintedAt[metadata.websiteId] = metadata.date
+
+            self.id = Webshot.totalSupply
             self.content = content
             self.metadata = metadata
             self.royalty = royalty
@@ -275,7 +278,6 @@ pub contract Webshot: NonFungibleToken {
         royalty: {String: Royalty}) : @Webshot.NFT {
 
         var newNFT <- create NFT(
-            id: Webshot.totalSupply,
             content: content,
             metadata: Metadata(
                 websiteAddress: websiteAddress,
@@ -294,11 +296,6 @@ pub contract Webshot: NonFungibleToken {
         )
         emit Created(id: Webshot.totalSupply, metadata: newNFT.metadata)
 
-        Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
-
-        Website.totalMintedWebshots[websiteId] = Website.totalMintedWebshots[websiteId]! + UInt64(1)
-        Website.lastWebshotMintedAt[websiteId] = date
-
         return <- newNFT
     }
 
@@ -310,7 +307,7 @@ pub contract Webshot: NonFungibleToken {
         self.CollectionStoragePath = /storage/WebshotCollection001
 
         // Initialize the total supply
-        self.totalSupply = (0 as UInt64)
+        self.totalSupply = UInt64(0)
 
         self.account.save<@NonFungibleToken.Collection>(<- Webshot.createEmptyCollection(), to: Webshot.CollectionStoragePath)
         self.account.link<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath, target: Webshot.CollectionStoragePath)

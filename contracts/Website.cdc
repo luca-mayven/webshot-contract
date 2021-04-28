@@ -55,7 +55,6 @@ pub contract Website: NonFungibleToken {
         pub let isRecurring: Bool
 
         init(
-            id: UInt64,
             name: String,
             url: String,
             ownerName: String,
@@ -65,7 +64,8 @@ pub contract Website: NonFungibleToken {
             isRecurring: Bool
                     ) {
 
-            self.id = id
+            Website.totalSupply = Website.totalSupply + UInt64(1)
+            self.id = Website.totalSupply
             self.name = name
             self.url = url
             self.ownerName = ownerName
@@ -261,7 +261,6 @@ pub contract Website: NonFungibleToken {
         isRecurring: Bool) : @Website.NFT {
 
         var newNFT <- create NFT(
-            id: Website.totalSupply,
             name: name,
             url: url,
             ownerName: ownerName,
@@ -275,7 +274,6 @@ pub contract Website: NonFungibleToken {
         Website.totalMintedWebshots[newNFT.id] = UInt64(0)
         Website.lastWebshotMintedAt[newNFT.id] = UFix64(0)
 
-        Website.totalSupply = Website.totalSupply + UInt64(1)
 
         return <- newNFT
     }
