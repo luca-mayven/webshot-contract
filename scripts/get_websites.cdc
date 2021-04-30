@@ -11,7 +11,7 @@ import Drop from "../contracts/Drop.cdc"
 
 // This script returns the available websites
 
-pub fun main(address:Address) : Website.WebsiteData {
+pub fun main(address:Address) : [Website.WebsiteData] {
 
     return Website.getWebsite(address: address)
 
