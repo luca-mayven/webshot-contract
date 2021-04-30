@@ -21,10 +21,12 @@ transaction(
 
     let client: &Drop.Admin
     let ownerCollection: Capability<&{Website.CollectionPublic}>
+    let selfAddress: Address
 
     prepare(account: AuthAccount) {
         self.client = account.borrow<&Drop.Admin>(from: Drop.WebshotAdminStoragePath) ?? panic("could not load webshot admin")
         self.ownerCollection = getAccount(ownerAddress).getCapability<&{Website.CollectionPublic}>(Website.CollectionPublicPath)
+        self.selfAddress = account.address
     }
 
     execute {
@@ -37,7 +39,9 @@ transaction(
             webshotMinInterval: webshotMinInterval,
             isRecurring: isRecurring
             )
-        let metadata = website.metadata
+
+        let metadata = Website.getWebsiteById(self.selfAddress, website.id)
+
         self.ownerCollection.borrow()!.deposit(token: <- website)
 
         return metadata
