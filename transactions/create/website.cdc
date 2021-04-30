@@ -37,7 +37,10 @@ transaction(
             webshotMinInterval: webshotMinInterval,
             isRecurring: isRecurring
             )
+        let metadata = website.metadata
         self.ownerCollection.borrow()!.deposit(token: <- website)
+
+        return metadata
     }
 
 }

@@ -245,8 +245,8 @@ pub contract Drop {
         pub fun settle(cutPercentage: UFix64, cutVault: Capability<&{FungibleToken.Receiver}> )  {
             pre {
                 !self.auctionSettled : "The auction is already settled"
+                self.isAuctionExpired() : "The auction has not expired yet"
                 self.NFT != nil: "NFT in auction does not exist"
-                self.isAuctionExpired() : "Auction has not completed yet"
             }
 
             // return if there are no bids to settle
@@ -266,7 +266,6 @@ pub contract Drop {
             self.sendBidTokens(self.ownerVaultCap)
 
             self.auctionSettled = true
-
             self.settledAt = getCurrentBlock().height
 
             emit AuctionSettled(auctionId: self.auctionId, price: self.currentPrice)
@@ -278,6 +277,9 @@ pub contract Drop {
 
             // deposit the NFT into the owner's collection
             self.sendNFT(self.ownerCollectionCap)
+
+            self.auctionSettled = true
+            self.settledAt = getCurrentBlock().height
          }
 
          pub fun cancelAuction() {
