@@ -40,11 +40,8 @@ transaction(
             isRecurring: isRecurring
             )
 
-        let metadata = Website.getWebsiteById(self.selfAddress, website.id)
-
         self.ownerCollection.borrow()!.deposit(token: <- website)
 
-        return metadata
     }
 
 }
