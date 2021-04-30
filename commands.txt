@@ -11,6 +11,9 @@ flow scripts execute ./scripts/check_account.cdc --args-json '[{"type": "Address
 //GET ALL WEBSITES
 flow scripts execute ./scripts/get_websites.cdc --args-json '[{"type": "Address","value": "0xf8d6e0586b0a20c7"}]'
 
+//GET ALL AUCTIONS
+flow scripts execute ./scripts/get_auctions.cdc
+
 
 //SETUP ADMIN ACCOUNT
 flow transactions send ./transactions/setup/admin.cdc
@@ -41,6 +44,11 @@ flow transactions send ./transactions/buy/purchase_sale.cdc --args-json '[{"type
 
 //SETTLE AN AUCTION ONCE TIME HAS EXPIRED
 flow transactions send ./transactions/buy/settle.cdc --args-json '[{"type": "UInt64", "value": "1"}]'
+
+
+//GET WEBSITE CREATED EVENT
+
+flow events get A.f8d6e0586b0a20c7.Website.Created
 
 -----------------------------------------------------------------
 
