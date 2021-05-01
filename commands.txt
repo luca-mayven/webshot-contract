@@ -14,6 +14,9 @@ flow scripts execute ./scripts/get_websites.cdc --args-json '[{"type": "Address"
 //GET ALL AUCTIONS
 flow scripts execute ./scripts/get_auctions.cdc
 
+//GET ALL WEBSHOTS
+flow scripts execute ./scripts/get_webshots.cdc --args-json '[{"type": "Address","value": "0xf8d6e0586b0a20c7"}]'
+
 
 //SETUP ADMIN ACCOUNT
 flow transactions send ./transactions/setup/admin.cdc
