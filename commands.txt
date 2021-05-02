@@ -50,8 +50,21 @@ flow transactions send ./transactions/buy/settle.cdc --args-json '[{"type": "UIn
 
 
 //GET WEBSITE CREATED EVENT
+flow events get A.f8d6e0586b0a20c7.Website.Created 0
 
-flow events get A.f8d6e0586b0a20c7.Website.Created
+//GET SALE CREATED EVENT
+flow events get A.f8d6e0586b0a20c7.Marketplace.ForSale 0
+
+//GET SALE COMPLETED EVENT
+flow events get A.f8d6e0586b0a20c7.Marketplace.WebshotPurchased 0
+
+//GET SALE PRICE CHANGED EVENT
+flow events get A.f8d6e0586b0a20c7.Marketplace.PriceChanged 0
+
+//GET SALE REMOVED EVENT
+flow events get A.f8d6e0586b0a20c7.Marketplace.SaleWithdrawn 0
+
+
 
 -----------------------------------------------------------------
 

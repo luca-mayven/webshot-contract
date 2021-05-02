@@ -71,7 +71,8 @@ pub contract Drop {
     pub struct AuctionStatus{
         pub let id: UInt64
         pub let webshotId: UInt64?
-        pub let price : UFix64
+        pub let startPrice : UFix64
+        pub let currentPrice : UFix64
         pub let bidIncrement : UFix64
         pub let bids : UInt64
         pub let timeRemaining : Fix64
@@ -89,7 +90,8 @@ pub contract Drop {
 
         init(id: UInt64,
             webshotId: UInt64?,
-            price: UFix64,
+            startPrice: UFix64,
+            currentPrice: UFix64,
             bids: UInt64,
             timeRemaining: Fix64,
             metadata: Webshot.Metadata?,
@@ -106,7 +108,8 @@ pub contract Drop {
         ) {
             self.id = id
             self.webshotId = webshotId
-            self.price = price
+            self.startPrice = startPrice
+            self.currentPrice = currentPrice
             self.bids = bids
             self.timeRemaining = timeRemaining
             self.metadata = metadata
@@ -397,7 +400,8 @@ pub contract Drop {
             return AuctionStatus(
                 id: self.auctionId,
                 webshotId: self.NFT?.id,
-                price: self.currentPrice,
+                startPrice: self.startPrice,
+                currentPrice: self.currentPrice,
                 bids: self.numberOfBids,
                 timeRemaining: self.timeRemaining(),
                 metadata: self.NFT?.metadata,
