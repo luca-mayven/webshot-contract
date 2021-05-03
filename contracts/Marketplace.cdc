@@ -22,10 +22,10 @@ pub contract Marketplace {
     pub let CollectionStoragePath: StoragePath
 
     // Event that is emitted when a new NFT is put up for sale
-    pub event ForSale(id: UInt64, price: UFix64)
+    pub event ForSale(id: UInt64, price: UFix64, address:Address)
 
     // Event that is emitted when the price of an NFT changes
-    pub event PriceChanged(id: UInt64, newPrice: UFix64)
+    pub event PriceChanged(id: UInt64, newPrice: UFix64, address:Address)
 
     // Event that is emitted when a token is purchased
     pub event WebshotPurchased(id: UInt64, price: UFix64, from:Address, to:Address)
@@ -33,7 +33,7 @@ pub contract Marketplace {
     pub event RoyaltyPaid(id:UInt64, amount: UFix64, to:Address, name:String)
 
     // Event that is emitted when a seller withdraws their NFT from the sale
-    pub event SaleWithdrawn(id: UInt64)
+    pub event SaleWithdrawn(id: UInt64, from:Address)
 
 
     pub event RoyalityPaid()
@@ -76,7 +76,11 @@ pub contract Marketplace {
             self.prices.remove(key: tokenID)
             // remove and return the token
             let token <- self.forSale.remove(key: tokenID) ?? panic("missing NFT")
-            emit SaleWithdrawn(id: tokenID)
+
+
+            let vaultRef = self.ownerVault.borrow()
+                ?? panic("Could not borrow reference to owner token vault")
+            emit SaleWithdrawn(id: tokenID, address: vaultRef.owner!.address)
             return <-token
         }
 
@@ -91,14 +95,18 @@ pub contract Marketplace {
             let oldToken <- self.forSale[id] <- token
             destroy oldToken
 
-            emit ForSale(id: id, price: price)
+            let vaultRef = self.ownerVault.borrow()
+                ?? panic("Could not borrow reference to owner token vault")
+            emit ForSale(id: id, price: price, address: vaultRef.owner!.address)
         }
 
         // changePrice changes the price of a token that is currently for sale
         pub fun changePrice(tokenID: UInt64, newPrice: UFix64) {
             self.prices[tokenID] = newPrice
 
-            emit PriceChanged(id: tokenID, newPrice: newPrice)
+            let vaultRef = self.ownerVault.borrow()
+                ?? panic("Could not borrow reference to owner token vault")
+            emit PriceChanged(id: tokenID, newPrice: newPrice, address: vaultRef.owner!.address)
         }
 
         // purchase lets a user send tokens to purchase an NFT that is for sale
