@@ -120,7 +120,7 @@ pub contract Webshot: NonFungibleToken {
             self.content = content
             self.metadata = metadata
             self.royalty = royalty
-            self.schema=nil
+            self.schema = nil
             self.name = metadata.name
             self.description=metadata.description
         }
