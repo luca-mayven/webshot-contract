@@ -11,8 +11,8 @@ import Drop from "../contracts/Drop.cdc"
 
 // This script returns the available webshots
 
-pub fun main(address:Address) : [Webshot.WebshotData] {
+pub fun main(address:Address, webshotId: UInt64) : Webshot.WebshotData? {
 
-    return Webshot.getWebshots(address: address)
+    return Webshot.getWebshot(address: address, webshotId: webshotId)
 
 }

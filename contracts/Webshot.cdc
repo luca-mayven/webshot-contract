@@ -242,22 +242,38 @@ pub contract Webshot: NonFungibleToken {
     }
 
     // We cannot return the content here since it will be too big to run in a script
-    pub fun getWebshot(address: Address) : [WebshotData] {
+    pub fun getWebshot(address: Address, webshotId: UInt64) : WebshotData? {
 
-        var webshotData: [WebshotData] = []
         let account = getAccount(address)
 
         if let webshotCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Webshot.CollectionPublic}>()  {
-            for id in webshotCollection.getIDs() {
-                var webshot = webshotCollection.borrowWebshot(id: id)
-                webshotData.append(WebshotData(
-                    id: id,
+            if let webshot = webshotCollection.borrowWebshot(id: webshotId) {
+                return WebshotData(
+                    id: webshotId,
                     metadata: webshot!.metadata
-                    ))
+                )
             }
         }
-        return webshotData
+        return nil
     }
+
+    // We cannot return the content here since it will be too big to run in a script
+        pub fun getWebshots(address: Address) : [WebshotData] {
+
+            var webshotData: [WebshotData] = []
+            let account = getAccount(address)
+
+            if let webshotCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Webshot.CollectionPublic}>()  {
+                for id in webshotCollection.getIDs() {
+                    var webshot = webshotCollection.borrowWebshot(id: id)
+                    webshotData.append(WebshotData(
+                        id: id,
+                        metadata: webshot!.metadata
+                        ))
+                }
+            }
+            return webshotData
+        }
 
 
 
@@ -265,7 +281,6 @@ pub contract Webshot: NonFungibleToken {
     access(account) fun createWebshot(
         websiteAddress: Address,
         websiteId: UInt64,
-        mint: UInt64,
         name: String,
         url: String,
         owner:String,
@@ -276,6 +291,8 @@ pub contract Webshot: NonFungibleToken {
         content: String,
         imgUrl: String,
         royalty: {String: Royalty}) : @Webshot.NFT {
+
+        let mint = Website.totalMintedWebshots[websiteId]! + UInt64(1)
 
         var newNFT <- create NFT(
             content: content,

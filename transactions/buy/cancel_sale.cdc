@@ -9,11 +9,11 @@ import Marketplace from "../../contracts/Marketplace.cdc"
 import Drop from "../../contracts/Drop.cdc"
 
 
-//this transaction will create the saleCollection if not already present and will then put the NFT for sale
+//this transaction will remove the sale and return the Webshot to the collection
 
 transaction(
-    webshotId: UInt64,
-    price: UFix64) {
+    webshotId: UInt64
+    ) {
 
     let webshotCollection: &Webshot.Collection
     let marketplace: &Marketplace.SaleCollection
@@ -38,7 +38,7 @@ transaction(
     }
 
     execute {
-        let webshot <- self.webshotCollection.withdraw(withdrawID: webshotId) as! @Webshot.NFT
-        self.marketplace.listForSale(token: <- webshot, price: price)
+        let webshot <- self.marketplace.withdraw(tokenId: webshotId)
+        self.webshotCollection.deposit(token: <- webshot);
     }
 }

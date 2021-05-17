@@ -9,10 +9,10 @@ import Drop from "../contracts/Drop.cdc"
 
 
 
-// This script returns the available webshots
+// This script returns the available websites
 
-pub fun main(address:Address) : [Webshot.WebshotData] {
+pub fun main(address:Address, websiteId: UInt64) : Website.WebsiteData? {
 
-    return Webshot.getWebshots(address: address)
+    return Website.getWebsite(address: address, id: websiteId)
 
 }

@@ -9,7 +9,7 @@ import Drop from "../../contracts/Drop.cdc"
 
 
 //this transaction buy a Webshot from a direct sale listing from another user
-transaction(saleAddress: Address, tokenID: UInt64, amount: UFix64) {
+transaction(saleAddress: Address, tokenId: UInt64, amount: UFix64) {
 
     // reference to the buyer's NFT collection where they
     // will store the bought NFT
@@ -48,10 +48,10 @@ transaction(saleAddress: Address, tokenID: UInt64, amount: UFix64) {
         // get the read-only account storage of the seller
         let seller = getAccount(saleAddress)
 
-        let marketplace= seller.getCapability(Marketplace.CollectionPublicPath).borrow<&{Marketplace.SalePublic}>()
+        let marketplace = seller.getCapability(Marketplace.CollectionPublicPath).borrow<&{Marketplace.SalePublic}>()
                          ?? panic("Could not borrow seller's sale reference")
 
-        marketplace.purchase(tokenID: tokenID, recipientCap:self.collectionCap, buyTokens: <- self.temporaryVault)
+        marketplace.purchase(tokenId: tokenId, recipientCap:self.collectionCap, buyTokens: <- self.temporaryVault)
     }
 
 }

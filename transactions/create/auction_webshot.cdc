@@ -11,7 +11,10 @@ import Drop from "../../contracts/Drop.cdc"
 //this transaction will create a new Webshot and create and auction for it
 transaction(
     websiteAddress: Address,
-    webshotId: UInt64,
+    websiteId: UInt64,
+    ipfs: {String: String},
+    content: String,
+    imgUrl: String,
     minimumBidIncrement: UFix64,
     startPrice: UFix64,
     duration: UFix64,
@@ -20,17 +23,21 @@ transaction(
     let client: &Drop.Admin
     let ownerCollection: Capability<&{Webshot.CollectionPublic}>
     let ownerWallet: Capability<&{FungibleToken.Receiver}>
-    let webshotCollection: &Webshot.Collection
 
     prepare(account: AuthAccount) {
         self.client = account.borrow<&Drop.Admin>(from: Drop.WebshotAdminStoragePath) ?? panic("could not load webshot admin")
         self.ownerCollection = getAccount(websiteAddress).getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)
         self.ownerWallet =  getAccount(websiteAddress).getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
-        self.webshotCollection= account.borrow<&Webshot.Collection>(from: Webshot.CollectionStoragePath)!
     }
 
     execute {
-        let webshot <- self.webshotCollection.withdraw(withdrawID: webshotId) as! @Webshot.NFT
+        let webshot <-  self.client.mintWebshot(
+            websiteAddress: websiteAddress,
+            websiteId: websiteId,
+            ipfs: ipfs,
+            content: content,
+            imgUrl: imgUrl
+            )
 
         self.client.createAuction(
             nft: <- webshot,

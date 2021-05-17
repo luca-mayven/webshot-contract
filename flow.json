@@ -46,10 +46,7 @@
       "address": "0xf8d6e0586b0a20c7",
       "keys": "6aeadb5ccba5cb1c20e8228306115852e29a1d19a4b0013eee291147da493175"
     },
-    "testnet-account": {
-      "address": "${FLOW_ADDRESS}",
-      "keys": "${FLOW_PRIVATE_KEY}"
-    }
+    "testnet-account": {"fromFile": "./flow.testnet.json"}
   },
   "deployments": {
     "testnet": {

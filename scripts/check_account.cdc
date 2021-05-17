@@ -13,7 +13,7 @@ pub struct AddressStatus {
   pub(set) var balance: UFix64
   pub(set) var webshotData: [Webshot.WebshotData]
   pub(set) var websiteData: [Website.WebsiteData]
-  pub(set) var saleData: [Marketplace.SaleData]
+  pub(set) var saleData: [Marketplace.SalesData]
   pub(set) var auctionData: [Drop.AuctionStatus]
   init (_ address:Address) {
     self.address=address
@@ -31,16 +31,16 @@ pub fun main(address:Address) : AddressStatus {
     // get the accounts' public address objects
     let account = getAccount(address)
     let status = AddressStatus(address)
-    
+
     if let vault = account.getCapability(/public/flowTokenBalance).borrow<&{FungibleToken.Balance}>() {
        status.balance = vault.balance
     }
 
-    status.webshotData = Webshot.getWebshot(address: address)
+    status.webshotData = Webshot.getWebshots(address: address)
     status.websiteData = Website.getWebsite(address: address)
-    status.saleData = Marketplace.getSale(address: address)
+    status.saleData = Marketplace.getSales(address: address)
     status.auctionData = Drop.getAuctions()
-    
+
     return status
 
 }

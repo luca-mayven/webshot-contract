@@ -206,7 +206,7 @@ pub contract Website: NonFungibleToken {
     }
 
 
-    pub fun getWebsite(address: Address) : [WebsiteData] {
+    pub fun getWebsites(address: Address) : [WebsiteData] {
         var websiteData: [WebsiteData] = []
         let account = getAccount(address)
 
@@ -228,7 +228,7 @@ pub contract Website: NonFungibleToken {
         return websiteData
     }
 
-    pub fun getWebsiteById(address: Address, id: UInt64) : WebsiteData? {
+    pub fun getWebsite(address: Address, id: UInt64) : WebsiteData? {
         var websiteData: [WebsiteData] = []
         let account = getAccount(address)
 

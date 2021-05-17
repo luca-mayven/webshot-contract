@@ -86,7 +86,7 @@ pub contract Drop {
         pub let expired: Bool
         pub let active: Bool
         pub let firstBidBlock: UInt64?
-        pub let settledAt: UInt64?
+        pub let settledAt: UInt64?  //TODO: change to Fix64 to use a timestamp instead?
 
         init(id: UInt64,
             webshotId: UInt64?,
@@ -234,7 +234,7 @@ pub contract Drop {
                 vaultRef.deposit(from: <-bidVaultRef.withdraw(amount: bidVaultRef.balance))
                 return
             }
-            panic("Could not send tokens to non existant receiver")
+            panic("Could not send tokens to non existent receiver")
         }
 
         pub fun releasePreviousBid() {
@@ -297,7 +297,7 @@ pub contract Drop {
             let startTime = self.auctionStartTime
             let currentTime = getCurrentBlock().timestamp
 
-            let remaining = Fix64(startTime+duration) - Fix64(currentTime)
+            let remaining = Fix64(startTime) + Fix64(duration) - Fix64(currentTime)
             return remaining
         }
 
@@ -409,7 +409,7 @@ pub contract Drop {
                 bidIncrement: self.minimumBidIncrement,
                 owner: self.ownerVaultCap.borrow()!.owner!.address,
                 startTime: Fix64(self.auctionStartTime),
-                endTime: Fix64(self.auctionStartTime+self.duration),
+                endTime: Fix64(self.auctionStartTime + self.duration),
                 minNextBid: self.minNextBid(),
                 completed: self.auctionSettled,
                 expired: self.isAuctionExpired(),
@@ -601,13 +601,6 @@ pub contract Drop {
         return nil
     }
 
-    // Get the active Auctions
-    pub fun getAuctions() : [Drop.AuctionStatus]{
-        let account = Drop.account
-        let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)!
-        return auctionCap.borrow()!.getAllStatuses().values
-     }
-
     pub fun getAuction(_ auctionId: UInt64) : Drop.AuctionStatus? {
       let account = Drop.account
       let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)
@@ -616,6 +609,28 @@ pub contract Drop {
       }
       return nil
     }
+
+    // Get all the Auctions
+    pub fun getAuctions() : [Drop.AuctionStatus]{
+        let account = Drop.account
+        let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)!
+        return auctionCap.borrow()!.getAllStatuses().values
+     }
+
+     // Get the active Auctions
+     pub fun getActiveAuctions() : [Drop.AuctionStatus]{
+         let account = Drop.account
+         let activeAuctions: [Drop.AuctionStatus] = [];
+         let auctionCap = account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)!
+         let auctionStatus = auctionCap.borrow()!.getAllStatuses()
+         for s in auctionStatus.values {
+             if s.active != false {
+                 activeAuctions.append(s)
+             }
+         }
+         return activeAuctions
+      }
+
 
 
 
@@ -726,7 +741,7 @@ pub contract Drop {
                 self.server != nil : "Your client has not been linked to the server"
             }
 
-            let websiteData = Website.getWebsiteById(address: websiteAddress, id: websiteId)!
+            let websiteData = Website.getWebsite(address: websiteAddress, id: websiteId)!
 
             let ownerAccount = getAccount(websiteData.ownerAddress)
 
@@ -764,7 +779,7 @@ pub contract Drop {
                 Website.totalMintedWebshots[websiteId] != nil : "Can't find Website in Collection"
             }
 
-            let websiteData = Website.getWebsiteById(address: websiteAddress, id: websiteId)!
+            let websiteData = Website.getWebsite(address: websiteAddress, id: websiteId)!
 
             let currentTime = getCurrentBlock().timestamp
 
@@ -776,7 +791,6 @@ pub contract Drop {
             let webshot <- Webshot.createWebshot(
                 websiteAddress: websiteAddress,
                 websiteId: websiteId,
-                mint: Website.totalMintedWebshots[websiteId]!,
                 name: websiteData.name,
                 url: websiteData.url,
                 owner: websiteData.ownerName,
