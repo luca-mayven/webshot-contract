@@ -438,6 +438,8 @@ pub contract Drop {
 
             destroy self.NFT
             destroy self.bidVault
+
+            emit AuctionDestroyed(auctionId: self.auctionId)
         }
 
     }
