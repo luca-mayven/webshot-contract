@@ -24,3 +24,5 @@ yarn-error.log*
 .exrc
 .eslintcache
 .idea
+
+flow.testnet.json

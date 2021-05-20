@@ -179,7 +179,7 @@ pub contract Marketplace {
     }
 
 
-    pub struct SalesData {
+    pub struct SaleData {
         pub let id: UInt64
         pub let price: UFix64
         pub let metadata: Webshot.Metadata
@@ -196,15 +196,15 @@ pub contract Marketplace {
     }
 
 
-    pub fun getSales(address: Address) : [SalesData] {
-        var saleData: [SalesData] = []
+    pub fun getSales(address: Address) : [SaleData] {
+        var saleData: [SaleData] = []
         let account = getAccount(address)
 
         if let saleCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Marketplace.SalePublic}>()  {
             for id in saleCollection.getIDs() {
                 let price = saleCollection.getPrice(tokenId: id)
                 let webshot = saleCollection.getWebshot(tokenId: id)
-                saleData.append(SalesData(
+                saleData.append(SaleData(
                     id: id,
                     price: price!,
                     metadata: webshot!.metadata
@@ -214,14 +214,14 @@ pub contract Marketplace {
         return saleData
     }
 
-    pub fun getSale(address: Address, id: UInt64) : SalesData? {
+    pub fun getSale(address: Address, id: UInt64) : SaleData? {
 
         let account = getAccount(address)
 
         if let saleCollection = account.getCapability(self.CollectionPublicPath).borrow<&{Marketplace.SalePublic}>()  {
             if let webshot = saleCollection.getWebshot(tokenId: id) {
                 let price = saleCollection.getPrice(tokenId: id)
-                return SalesData(
+                return SaleData(
                            id: id,
                             price: price!,
                             metadata: webshot.metadata

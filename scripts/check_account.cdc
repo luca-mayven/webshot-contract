@@ -13,7 +13,7 @@ pub struct AddressStatus {
   pub(set) var balance: UFix64
   pub(set) var webshotData: [Webshot.WebshotData]
   pub(set) var websiteData: [Website.WebsiteData]
-  pub(set) var saleData: [Marketplace.SalesData]
+  pub(set) var saleData: [Marketplace.SaleData]
   pub(set) var auctionData: [Drop.AuctionStatus]
   init (_ address:Address) {
     self.address=address

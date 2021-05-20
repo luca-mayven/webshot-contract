@@ -70,7 +70,7 @@ pub contract Drop {
     // This struct aggregates status for the auction and is exposed in order to create websites using auction information
     pub struct AuctionStatus{
         pub let id: UInt64
-        pub let webshotId: UInt64?
+        pub let webshotId: UInt64
         pub let startPrice : UFix64
         pub let currentPrice : UFix64
         pub let bidIncrement : UFix64
@@ -78,7 +78,7 @@ pub contract Drop {
         pub let timeRemaining : Fix64
         pub let endTime : Fix64
         pub let startTime : Fix64
-        pub let metadata: Webshot.Metadata?
+        pub let metadata: Webshot.Metadata
         pub let owner: Address
         pub let leader: Address?
         pub let minNextBid: UFix64
@@ -86,15 +86,15 @@ pub contract Drop {
         pub let expired: Bool
         pub let active: Bool
         pub let firstBidBlock: UInt64?
-        pub let settledAt: UInt64?  //TODO: change to Fix64 to use a timestamp instead?
+        pub let settledAt: UFix64?
 
         init(id: UInt64,
-            webshotId: UInt64?,
+            webshotId: UInt64,
             startPrice: UFix64,
             currentPrice: UFix64,
             bids: UInt64,
             timeRemaining: Fix64,
-            metadata: Webshot.Metadata?,
+            metadata: Webshot.Metadata,
             leader: Address?,
             bidIncrement: UFix64,
             owner: Address,
@@ -104,7 +104,7 @@ pub contract Drop {
             completed: Bool,
             expired: Bool,
             firstBidBlock: UInt64?,
-            settledAt: UInt64?
+            settledAt: UFix64?
         ) {
             self.id = id
             self.webshotId = webshotId
@@ -135,7 +135,7 @@ pub contract Drop {
 
         //this is used to be able to query events for a drop from a given start point
         access(contract) var firstBidBlock: UInt64?
-        access(contract) var settledAt: UInt64?
+        access(contract) var settledAt: UFix64?
 
 
         //Number of bids made, that is aggregated to the status struct
@@ -180,6 +180,10 @@ pub contract Drop {
 
         access(contract) var extensionOnLateBid: UFix64
 
+
+        //The id of the NFT
+        pub let webshotId: UInt64
+
         //Store metadata here would allow us to show this after the drop has ended. The NFTS are gone then but the  metadata remains here
         pub let metadata: Webshot.Metadata
 
@@ -197,6 +201,7 @@ pub contract Drop {
             self.auctionId = Drop.totalAuctions
             self.firstBidBlock = nil
             self.settledAt = nil
+            self.webshotId = NFT.id
             self.metadata = NFT.metadata
             self.NFT <- NFT
             self.bidVault <- FlowToken.createEmptyVault()
@@ -269,7 +274,7 @@ pub contract Drop {
             self.sendBidTokens(self.ownerVaultCap)
 
             self.auctionSettled = true
-            self.settledAt = getCurrentBlock().height
+            self.settledAt = getCurrentBlock().timestamp
 
             emit AuctionSettled(auctionId: self.auctionId, price: self.currentPrice)
         }
@@ -282,7 +287,7 @@ pub contract Drop {
             self.sendNFT(self.ownerCollectionCap)
 
             self.auctionSettled = true
-            self.settledAt = getCurrentBlock().height
+            self.settledAt = getCurrentBlock().timestamp
          }
 
          pub fun cancelAuction() {
@@ -367,7 +372,7 @@ pub contract Drop {
             //We need to extend the auction since there is too little time left. If we did not do this a late user could potentially win with a cheecky bid
             if auctionStatus.endTime < bidEndTime {
                 let extendWith=bidEndTime - auctionStatus.endTime
-                emit AuctionExtended(auctionId: self.auctionId, name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner, extendWith: extendWith, extendTo: bidEndTime)
+                emit AuctionExtended(auctionId: self.auctionId, name: auctionStatus.metadata.name, owner: auctionStatus.metadata.owner, extendWith: extendWith, extendTo: bidEndTime)
                 self.extendWith(UFix64(extendWith))
             }
 
@@ -387,7 +392,7 @@ pub contract Drop {
 
 
             let bidderAddress = vaultCap.borrow()!.owner!.address
-            emit AuctionBid(auctionId: self.auctionId, name: auctionStatus.metadata!.name, owner: auctionStatus.metadata!.owner, bidder: bidderAddress, price: self.currentPrice)
+            emit AuctionBid(auctionId: self.auctionId, name: auctionStatus.metadata.name, owner: auctionStatus.metadata.owner, bidder: bidderAddress, price: self.currentPrice)
         }
 
         pub fun getAuctionStatus(): AuctionStatus {
@@ -399,12 +404,12 @@ pub contract Drop {
 
             return AuctionStatus(
                 id: self.auctionId,
-                webshotId: self.NFT?.id,
+                webshotId: self.webshotId,
                 startPrice: self.startPrice,
                 currentPrice: self.currentPrice,
                 bids: self.numberOfBids,
                 timeRemaining: self.timeRemaining(),
-                metadata: self.NFT?.metadata,
+                metadata: self.metadata,
                 leader: leader,
                 bidIncrement: self.minimumBidIncrement,
                 owner: self.ownerVaultCap.borrow()!.owner!.address,

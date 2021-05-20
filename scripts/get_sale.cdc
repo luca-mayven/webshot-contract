@@ -11,7 +11,7 @@ import Drop from "../contracts/Drop.cdc"
 
 // This script returns the available websites
 
-pub fun main(address:Address, webshotId: UInt64) : Marketplace.SalesData? {
+pub fun main(address:Address, webshotId: UInt64) : Marketplace.SaleData? {
 
     return Marketplace.getSale(address: address, id: webshotId)
 
