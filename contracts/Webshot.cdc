@@ -320,8 +320,8 @@ pub contract Webshot: NonFungibleToken {
 
 	init() {
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath = /public/WebshotCollection001
-        self.CollectionStoragePath = /storage/WebshotCollection001
+        self.CollectionPublicPath = /public/WebshotCollection002
+        self.CollectionStoragePath = /storage/WebshotCollection002
 
         // Initialize the total supply
         self.totalSupply = UInt64(0)

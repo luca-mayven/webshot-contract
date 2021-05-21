@@ -244,7 +244,7 @@ pub contract Marketplace {
 
     pub init() {
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath= /public/WebshotMarketplace001
-        self.CollectionStoragePath= /storage/WebshotMarketplace001
+        self.CollectionPublicPath= /public/WebshotMarketplace002
+        self.CollectionStoragePath= /storage/WebshotMarketplace002
     }
 }

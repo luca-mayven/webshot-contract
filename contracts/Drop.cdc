@@ -841,11 +841,11 @@ pub contract Drop {
     init() {
 
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath = /public/AuctionCollection001
-        self.CollectionStoragePath = /storage/AuctionCollection001
-        self.CollectionPrivatePath= /private/AuctionCollection001
-        self.WebshotAdminPublicPath = /public/WebshotAdmin001
-        self.WebshotAdminStoragePath = /storage/WebshotAdmin001
+        self.CollectionPublicPath = /public/AuctionCollection002
+        self.CollectionStoragePath = /storage/AuctionCollection002
+        self.CollectionPrivatePath= /private/AuctionCollection002
+        self.WebshotAdminPublicPath = /public/WebshotAdmin002
+        self.WebshotAdminStoragePath = /storage/WebshotAdmin002
 
 
         self.totalAuctions = (0 as UInt64)

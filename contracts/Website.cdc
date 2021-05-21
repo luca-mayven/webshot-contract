@@ -282,8 +282,8 @@ pub contract Website: NonFungibleToken {
 
 	init() {
         //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath=/public/WebsiteCollection001
-        self.CollectionStoragePath=/storage/WebsiteCollection001
+        self.CollectionPublicPath=/public/WebsiteCollection002
+        self.CollectionStoragePath=/storage/WebsiteCollection002
 
         // Initialize the total supply
         self.totalSupply = 0

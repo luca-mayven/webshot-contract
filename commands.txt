@@ -14,6 +14,10 @@ flow transactions send ./transactions/setup/auction_collection.cdc --args-json '
 //INITIALIZE WEBSHOT COLLECTION TO ACCOUNT
 flow transactions send ./transactions/setup/webshot_collection.cdc
 
+//INITIALIZE WEBSITE COLLECTION TO ACCOUNT
+flow transactions send ./transactions/setup/website_collection.cdc
+
+
 //CREATE A NEW WEBSITE
 flow transactions send ./transactions/create/website.cdc --args-json '[{"type": "String","value": "a16z"},{"type": "String","value": "https://a16z.com"},{"type": "String","value": "a16z"},{"type": "Address","value": "0xf8d6e0586b0a20c7"},{"type": "String","value": "a16z homepage"},{"type": "UInt64","value": "60"},{"type": "Bool","value": false}]'
 
