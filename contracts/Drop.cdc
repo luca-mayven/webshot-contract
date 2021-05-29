@@ -792,7 +792,7 @@ pub contract Drop {
 
             let lastMintedTime = UInt64(Website.lastWebshotMintedAt[websiteId]!)
 
-            if(lastMintedTime + websiteData.webshotMinInterval > UInt64(currentTime) && lastMintedTime != 0){
+            if(lastMintedTime + websiteData.webshotMinInterval > UInt64(currentTime) && lastMintedTime != UInt64(0)){
                 panic("You are trying to mint a Webshot too soon!")
             }
 
