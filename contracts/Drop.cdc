@@ -16,12 +16,9 @@ import Website from "./Website.cdc"
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
 
-
-
  Webshot NFT are minted only by the contract admins and placed on an Auction using the website owner address.
 
  Users can place bids on auctions or directly buy and sell Webshot that have been purchased from an auction.
-
 
  The contract applies a cut to Auction sales for the marketplace (% set as property on the NFT when it is minted)
 
@@ -29,9 +26,7 @@ import Website from "./Website.cdc"
 
  */
 
-
 pub contract Drop {
-
 
     //A set of capability and storage paths used in this contract
     pub let CollectionStoragePath: StoragePath
@@ -40,11 +35,8 @@ pub contract Drop {
     pub let WebshotAdminPublicPath: PublicPath
     pub let WebshotAdminStoragePath: StoragePath
 
-
     //counter for drops that is incremented every time there is a new auction
     pub var totalAuctions: UInt64
-
-
 
     //emitted when a drop is extended
     pub event AuctionExtended(auctionId: UInt64, name: String, owner: String, extendWith: Fix64, extendTo: Fix64)
@@ -63,9 +55,6 @@ pub contract Drop {
 
     //emitted when an Auction is destroyed
     pub event AuctionDestroyed(auctionId: UInt64)
-
-
-
 
     // This struct aggregates status for the auction and is exposed in order to create websites using auction information
     pub struct AuctionStatus{
@@ -128,15 +117,12 @@ pub contract Drop {
 
     }
 
-
    //The Auction resource that manages all the bids done on a freshly minted Webshot
     pub resource Auction {
-
 
         //this is used to be able to query events for a drop from a given start point
         access(contract) var firstBidBlock: UInt64?
         access(contract) var settledAt: UFix64?
-
 
         //Number of bids made, that is aggregated to the status struct
         access(contract) var numberOfBids: UInt64
@@ -180,7 +166,6 @@ pub contract Drop {
 
         access(contract) var extensionOnLateBid: UFix64
 
-
         //The id of the NFT
         pub let webshotId: UInt64
 
@@ -218,8 +203,6 @@ pub contract Drop {
             self.numberOfBids = 0
             self.extensionOnLateBid = extensionOnLateBid
         }
-
-
 
         // sendNFT sends the NFT to the Collection belonging to the provided Capability
         access(contract) fun sendNFT(_ capability: Capability<&{Webshot.CollectionPublic}>) {
@@ -306,7 +289,6 @@ pub contract Drop {
             return remaining
         }
 
-
         pub fun isAuctionExpired(): Bool {
             let timeRemaining = self.timeRemaining()
             return timeRemaining < Fix64(0.0)
@@ -348,7 +330,6 @@ pub contract Drop {
                 }
             }
 
-
             let auctionStatus = self.getAuctionStatus()
 
             let block = getCurrentBlock()
@@ -376,7 +357,6 @@ pub contract Drop {
                 self.extendWith(UFix64(extendWith))
             }
 
-
             // Update the auction item
             self.bidVault.deposit(from: <-bidTokens)
 
@@ -389,7 +369,6 @@ pub contract Drop {
             // Add the bidder's Vault and NFT receiver references
             self.recipientCollectionCap = collectionCap
             self.numberOfBids = self.numberOfBids + (1 as UInt64)
-
 
             let bidderAddress = vaultCap.borrow()!.owner!.address
             emit AuctionBid(auctionId: self.auctionId, name: auctionStatus.metadata.name, owner: auctionStatus.metadata.owner, bidder: bidderAddress, price: self.currentPrice)
@@ -444,11 +423,6 @@ pub contract Drop {
 
     }
 
-
-
-
-
-
     //An resource interface that everybody can access through a public capability.
     pub resource interface AuctionPublic {
 
@@ -480,7 +454,6 @@ pub contract Drop {
         pub fun settle(_ auctionId: UInt64)
     }
 
-
     pub resource AuctionCollection: AuctionPublic, AuctionAdmin {
 
         pub var auctions: @{UInt64: Auction}
@@ -493,7 +466,6 @@ pub contract Drop {
         //NFTs that are not sold are put here when a bid is settled.
         pub let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>
 
-
         init(
             marketplaceVault: Capability<&{FungibleToken.Receiver}>,
             marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}>,
@@ -504,8 +476,6 @@ pub contract Drop {
             self.marketplaceVault = marketplaceVault
             self.auctions <- {}
         }
-
-
 
         pub fun createAuction(
              nft: @NonFungibleToken.NFT,
@@ -523,7 +493,6 @@ pub contract Drop {
             let webshot <- nft as! @Webshot.NFT
             let metadata = webshot.metadata
 
-
             let auction <- create Auction(
                 NFT: <- webshot,
                 minimumBidIncrement: minimumBidIncrement,
@@ -540,8 +509,6 @@ pub contract Drop {
             let oldAuction <- self.auctions[auction.auctionId] <- auction
             destroy oldAuction
         }
-
-
 
         //Get all the auction statuses
         pub fun getAllStatuses(): {UInt64: AuctionStatus} {
@@ -596,9 +563,6 @@ pub contract Drop {
         }
     }
 
-
-
-
     // Get the Webshot stored with a specific Auction
     pub fun getWebshotForAuction(_ auctionId: UInt64) : Webshot.Metadata? {
         let auctionCap = Drop.account.getCapability<&{Drop.AuctionPublic}>(self.CollectionPublicPath)
@@ -638,10 +602,6 @@ pub contract Drop {
          return activeAuctions
       }
 
-
-
-
-
     //The interface used to add a Administrator capability to a client
     pub resource interface AdminPublic {
         pub fun addCapability(_ cap: Capability<&Drop.AuctionCollection>)
@@ -663,8 +623,6 @@ pub contract Drop {
             }
             self.server = cap
         }
-
-
 
         // This will settle/end an auction
         pub fun settle(_ auctionId: UInt64) {
@@ -710,9 +668,6 @@ pub contract Drop {
 
         }
 
-
-
-
         pub fun createAuction(
           nft: @NonFungibleToken.NFT,
           minimumBidIncrement: UFix64,
@@ -751,7 +706,6 @@ pub contract Drop {
             let websiteData = Website.getWebsite(address: websiteAddress, id: websiteId)!
 
             let ownerAccount = getAccount(websiteData.ownerAddress)
-
 
             let ownerWallet = ownerAccount.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
             let webshotWallet =  Drop.account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
@@ -813,8 +767,6 @@ pub contract Drop {
             return <- webshot
         }
 
-
-
         pub fun getFlowWallet():&FungibleToken.Vault {
           pre {
             self.server != nil : "Your client has not been linked to the server"
@@ -836,18 +788,14 @@ pub contract Drop {
         return <- create Admin()
     }
 
-
-
     //initialize all the paths and create and link up the admin proxy
     init() {
 
-        //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath = /public/AuctionCollection002
-        self.CollectionStoragePath = /storage/AuctionCollection002
-        self.CollectionPrivatePath= /private/AuctionCollection002
-        self.WebshotAdminPublicPath = /public/WebshotAdmin002
-        self.WebshotAdminStoragePath = /storage/WebshotAdmin002
-
+        self.CollectionPublicPath = /public/AuctionCollection
+        self.CollectionStoragePath = /storage/AuctionCollection
+        self.CollectionPrivatePath= /private/AuctionCollection
+        self.WebshotAdminPublicPath = /public/WebshotAdmin
+        self.WebshotAdminStoragePath = /storage/WebshotAdmin
 
         self.totalAuctions = (0 as UInt64)
 

@@ -13,13 +13,11 @@ import Website from "./Website.cdc"
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
 
-
  Each Webshot has a Metadata struct containing both the IPFS URL with the high-res copy of the screenshot, and also a small thumbnail saved on-chain in the "content" field
 
  royalty defines the percentage cut for the Owner and the Market to be applied in direct sales
 
  */
-
 
 pub contract Webshot: NonFungibleToken {
 
@@ -73,7 +71,8 @@ pub contract Webshot: NonFungibleToken {
             description: String,
             date: UFix64,
             ipfs: {String: String},
-            imgUrl: String) {
+            imgUrl: String
+        ) {
                 self.websiteAddress = websiteAddress
                 self.websiteId = websiteId
                 self.mint = mint
@@ -125,7 +124,6 @@ pub contract Webshot: NonFungibleToken {
             self.description=metadata.description
         }
 
-
         pub fun getID(): UInt64 {
             return self.id
         }
@@ -139,7 +137,6 @@ pub contract Webshot: NonFungibleToken {
         }
     }
 
-
     //Standard NFT collectionPublic interface that can also borrowWebshot as the correct type
     pub resource interface CollectionPublic {
 
@@ -148,7 +145,6 @@ pub contract Webshot: NonFungibleToken {
         pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
         pub fun borrowWebshot(id: UInt64): &{Webshot.Public}?
     }
-
 
     pub resource Collection: CollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
         // dictionary of NFT conforming tokens
@@ -209,7 +205,6 @@ pub contract Webshot: NonFungibleToken {
             }
         }
 
-
         destroy() {
             destroy self.ownedNFTs
         }
@@ -219,10 +214,6 @@ pub contract Webshot: NonFungibleToken {
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
         return <- create Collection()
     }
-
-
-
-
 
     pub struct WebshotData {
         pub let id: UInt64
@@ -275,8 +266,6 @@ pub contract Webshot: NonFungibleToken {
             return webshotData
         }
 
-
-
     //This method can only be called from another contract in the same account. In Webshot case it is called from the AuctionAdmin that is used to administer the solution
     access(account) fun createWebshot(
         websiteAddress: Address,
@@ -316,12 +305,9 @@ pub contract Webshot: NonFungibleToken {
         return <- newNFT
     }
 
-
-
 	init() {
-        //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath = /public/WebshotCollection002
-        self.CollectionStoragePath = /storage/WebshotCollection002
+        self.CollectionPublicPath = /public/WebshotCollection
+        self.CollectionStoragePath = /storage/WebshotCollection
 
         // Initialize the total supply
         self.totalSupply = UInt64(0)

@@ -13,11 +13,9 @@ import FungibleToken from "./FungibleToken.cdc"
  - The Versus Auction contract created by Bjartek and Alchemist
  https://github.com/versus-flow/auction-flow-contract
 
-
  Each Website defines the name, URL, drop frequency, minting number for all the webshots created from it
 
  */
-
 
 pub contract Website: NonFungibleToken {
 
@@ -62,7 +60,7 @@ pub contract Website: NonFungibleToken {
             description: String,
             webshotMinInterval: UInt64,
             isRecurring: Bool
-                    ) {
+        ) {
 
             Website.totalSupply = Website.totalSupply + UInt64(1)
             self.id = Website.totalSupply
@@ -75,13 +73,6 @@ pub contract Website: NonFungibleToken {
             self.isRecurring = isRecurring
         }
     }
-
-
-
-
-
-
-
 
     //Standard NFT CollectionPublic interface that can also borrowWebsite as the correct type
     pub resource interface CollectionPublic {
@@ -150,26 +141,15 @@ pub contract Website: NonFungibleToken {
             }
         }
 
-
         destroy() {
             destroy self.ownedNFTs
         }
     }
 
-
     // public function that anyone can call to create a new empty collection
     pub fun createEmptyCollection(): @NonFungibleToken.Collection {
         return <- create Collection()
     }
-
-
-
-
-
-
-
-
-
 
     pub struct WebsiteData {
         pub let id: UInt64
@@ -204,7 +184,6 @@ pub contract Website: NonFungibleToken {
             self.lastWebshotMintedAt = Website.lastWebshotMintedAt[id]!
         }
     }
-
 
     pub fun getWebsites(address: Address) : [WebsiteData] {
         var websiteData: [WebsiteData] = []
@@ -249,7 +228,6 @@ pub contract Website: NonFungibleToken {
         return nil
     }
 
-
     //This method can only be called from another contract in the same account. In Website case it is called from the AuctionAdmin that is used to administer the solution
     access(account) fun createWebsite(
         name: String,
@@ -274,16 +252,12 @@ pub contract Website: NonFungibleToken {
         Website.totalMintedWebshots[newNFT.id] = UInt64(0)
         Website.lastWebshotMintedAt[newNFT.id] = UFix64(0)
 
-
         return <- newNFT
     }
 
-
-
 	init() {
-        //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath=/public/WebsiteCollection002
-        self.CollectionStoragePath=/storage/WebsiteCollection002
+        self.CollectionPublicPath=/public/WebsiteCollection
+        self.CollectionStoragePath=/storage/WebsiteCollection
 
         // Initialize the total supply
         self.totalSupply = 0

@@ -5,8 +5,6 @@ import Webshot from "./Webshot.cdc"
 //import FungibleToken from 0x9a0766d93b6608b7
 //import FUSD from 0xe223d8a629e49c68
 
-
-
 /*
 // A standard marketplace contract only hardcoded against Webshots that pay out Royalty as stored int he Webshot NFT
 
@@ -75,7 +73,6 @@ pub contract Marketplace {
             self.prices.remove(key: tokenId)
             // remove and return the token
             let token <- self.forSale.remove(key: tokenId) ?? panic("missing NFT")
-
 
             let vaultRef = self.ownerVault.borrow()
                 ?? panic("Could not borrow reference to owner token vault")
@@ -178,7 +175,6 @@ pub contract Marketplace {
         }
     }
 
-
     pub struct SaleData {
         pub let id: UInt64
         pub let price: UFix64
@@ -194,7 +190,6 @@ pub contract Marketplace {
             self.metadata = metadata
         }
     }
-
 
     pub fun getSales(address: Address) : [SaleData] {
         var saleData: [SaleData] = []
@@ -231,20 +226,13 @@ pub contract Marketplace {
         return nil
     }
 
-
-
-
-
     // createCollection returns a new collection resource to the caller
     pub fun createSaleCollection(ownerVault: Capability<&{FungibleToken.Receiver}>): @SaleCollection {
         return <- create SaleCollection(vault: ownerVault)
     }
 
-
-
     pub init() {
-        //TODO: REMOVE SUFFIX BEFORE RELEASE
-        self.CollectionPublicPath= /public/WebshotMarketplace002
-        self.CollectionStoragePath= /storage/WebshotMarketplace002
+        self.CollectionPublicPath= /public/WebshotMarketplace
+        self.CollectionStoragePath= /storage/WebshotMarketplace
     }
 }
