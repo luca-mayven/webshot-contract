@@ -112,7 +112,7 @@ pub contract Drop {
             self.expired = expired
             self.firstBidBlock = firstBidBlock
             self.settledAt = settledAt
-            self.active = !(expired || completed)
+            self.active = !(expired || completed || startTime < getCurrentBlock().timestamp)
         }
 
     }
