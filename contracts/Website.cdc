@@ -22,9 +22,9 @@ pub contract Website: NonFungibleToken {
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
 
-    pub var totalSupply: UInt64
-    pub var totalMintedWebshots: { UInt64: UInt64}
-    pub var lastWebshotMintedAt: { UInt64: UFix64}
+    access(contract) var totalSupply: UInt64
+    access(contract) var totalMintedWebshots: { UInt64: UInt64}
+    access(contract) var lastWebshotMintedAt: { UInt64: UFix64}
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -85,7 +85,7 @@ pub contract Website: NonFungibleToken {
     pub resource Collection: CollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
         // dictionary of NFT conforming tokens
         // NFT is a resource type with an `UInt64` ID field
-        pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
+        access(contract) var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
 
         init () {
             self.ownedNFTs <- {}

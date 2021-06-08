@@ -51,10 +51,10 @@ pub contract Marketplace {
     pub resource SaleCollection: SalePublic {
 
         // Dictionary of the NFTs that the user is putting up for sale
-        pub var forSale: @{UInt64: Webshot.NFT}
+        access(contract) var forSale: @{UInt64: Webshot.NFT}
 
         // Dictionary of the prices for each NFT by ID
-        pub var prices: {UInt64: UFix64}
+        access(contract) var prices: {UInt64: UFix64}
 
         // The fungible token vault of the owner of this sale.
         // When someone buys a token, this resource can deposit
