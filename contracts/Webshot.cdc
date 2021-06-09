@@ -1,7 +1,7 @@
 import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
-//import FungibleToken from 0x9a0766d93b6608b7
-//import FUSD from 0xe223d8a629e49c68
+//import FlowToken from "./FlowToken.cdc"
+//import FUSD from "./FUSD.cdc"
 import Website from "./Website.cdc"
 
 /*
@@ -24,7 +24,7 @@ pub contract Webshot: NonFungibleToken {
     pub let CollectionStoragePath: StoragePath
     pub let CollectionPublicPath: PublicPath
 
-    access(contract) let totalSupply: UInt64
+    pub var totalSupply: UInt64
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -149,7 +149,7 @@ pub contract Webshot: NonFungibleToken {
     pub resource Collection: CollectionPublic, NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic {
         // dictionary of NFT conforming tokens
         // NFT is a resource type with an `UInt64` ID field
-        access(contract) let ownedNFTs: @{UInt64: NonFungibleToken.NFT}
+        pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
 
         init () {
             self.ownedNFTs <- {}

@@ -1,9 +1,8 @@
 
 import NonFungibleToken from "./NonFungibleToken.cdc"
 import FungibleToken from "./FungibleToken.cdc"
-import FlowToken from "./FlowToken.cdc"
-//import FungibleToken from 0x9a0766d93b6608b7
-//import FUSD from 0xe223d8a629e49c68
+//import FlowToken from "./FlowToken.cdc"
+import FUSD from "./FUSD.cdc"
 import Webshot from "./Webshot.cdc"
 import Website from "./Website.cdc"
 
@@ -112,7 +111,7 @@ pub contract Drop {
             self.expired = expired
             self.firstBidBlock = firstBidBlock
             self.settledAt = settledAt
-            self.active = !(expired || completed || startTime < getCurrentBlock().timestamp)
+            self.active = !(expired || completed || UFix64(startTime) < getCurrentBlock().timestamp)
         }
 
     }
@@ -189,7 +188,7 @@ pub contract Drop {
             self.webshotId = NFT.id
             self.metadata = NFT.metadata
             self.NFT <- NFT
-            self.bidVault <- FlowToken.createEmptyVault()
+            self.bidVault <- FUSD.createEmptyVault()
             self.minimumBidIncrement = minimumBidIncrement
             self.duration = duration
             self.startPrice = startPrice
@@ -707,8 +706,8 @@ pub contract Drop {
 
             let ownerAccount = getAccount(websiteData.ownerAddress)
 
-            let ownerWallet = ownerAccount.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
-            let webshotWallet =  Drop.account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+            let ownerWallet = ownerAccount.getCapability<&{FungibleToken.Receiver}>(/public/fusdReceiver)
+            let webshotWallet =  Drop.account.getCapability<&{FungibleToken.Receiver}>(/public/fusdReceiver)
 
             let royalty = {
                 "owner" : Webshot.Royalty(wallet: ownerWallet, cut: 0.05),
@@ -771,7 +770,7 @@ pub contract Drop {
           pre {
             self.server != nil : "Your client has not been linked to the server"
           }
-          return Drop.account.borrow<&FungibleToken.Vault>(from: /storage/flowTokenVault)!
+          return Drop.account.borrow<&FungibleToken.Vault>(from: /storage/fusdVault)!
         }
 
         pub fun getWebshotCollection() : &NonFungibleToken.Collection {
@@ -801,7 +800,7 @@ pub contract Drop {
 
         let account = self.account
 
-        let marketplaceReceiver = account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+        let marketplaceReceiver = account.getCapability<&{FungibleToken.Receiver}>(/public/fusdReceiver)
         let marketplaceNFTUnsold: Capability<&{Webshot.CollectionPublic}> = account.getCapability<&{Webshot.CollectionPublic}>(Webshot.CollectionPublicPath)
 
         log("Setting up auction capability")

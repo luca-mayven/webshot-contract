@@ -1,9 +1,8 @@
 import FungibleToken from "./FungibleToken.cdc"
-import FlowToken from "./FlowToken.cdc"
 import NonFungibleToken from "./NonFungibleToken.cdc"
+//import FlowToken from "./FlowToken.cdc"
+//import FUSD from "./FUSD.cdc"
 import Webshot from "./Webshot.cdc"
-//import FungibleToken from 0x9a0766d93b6608b7
-//import FUSD from 0xe223d8a629e49c68
 
 /*
 // A standard marketplace contract only hardcoded against Webshots that pay out Royalty as stored int he Webshot NFT
