@@ -735,15 +735,15 @@ pub contract Drop {
 
             pre {
                 self.server != nil : "Your client has not been linked to the server"
-                Website.lastWebshotMintedAt[websiteId] != nil : "Can't find Website in Collection"
-                Website.totalMintedWebshots[websiteId] != nil : "Can't find Website in Collection"
+                Website.getLastWebshotMintedAt(id: websiteId) != nil : "Can't find Website in Collection"
+                Website.getTotalMintedWebshots(id: websiteId) != nil : "Can't find Website in Collection"
             }
 
             let websiteData = Website.getWebsite(address: websiteAddress, id: websiteId)!
 
             let currentTime = getCurrentBlock().timestamp
 
-            let lastMintedTime = UInt64(Website.lastWebshotMintedAt[websiteId]!)
+            let lastMintedTime = UInt64(Website.getLastWebshotMintedAt(id: websiteId)!)
 
             if(lastMintedTime + websiteData.webshotMinInterval > UInt64(currentTime) && lastMintedTime != UInt64(0)){
                 panic("You are trying to mint a Webshot too soon!")

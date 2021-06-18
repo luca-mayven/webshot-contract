@@ -43,7 +43,7 @@ pub contract Webshot: NonFungibleToken {
 
         pub let content: String
 
-        pub let royalty: {String: Royalty}
+        access(contract) let royalty: {String: Royalty}
     }
 
     //content is embedded in the NFT both as content and as URL pointing to an IPFS
@@ -104,7 +104,7 @@ pub contract Webshot: NonFungibleToken {
         pub let schema: String?
         pub let content: String
         pub let metadata: Metadata
-        pub let royalty: {String: Royalty}
+        access(contract) let royalty: {String: Royalty}
 
         init(
             content: String,
@@ -112,8 +112,8 @@ pub contract Webshot: NonFungibleToken {
             royalty: {String: Royalty}) {
 
             Webshot.totalSupply = Webshot.totalSupply + UInt64(1)
-            Website.totalMintedWebshots[metadata.websiteId] = Website.totalMintedWebshots[metadata.websiteId]! + UInt64(1)
-            Website.lastWebshotMintedAt[metadata.websiteId] = metadata.date
+            Website.setTotalMintedWebshots(id: metadata.websiteId, value: Website.getTotalMintedWebshots(id: metadata.websiteId)! + UInt64(1))
+            Website.setLastWebshotMintedAt(id: metadata.websiteId, value: metadata.date)
 
             self.id = Webshot.totalSupply
             self.content = content
@@ -121,7 +121,7 @@ pub contract Webshot: NonFungibleToken {
             self.royalty = royalty
             self.schema = nil
             self.name = metadata.name
-            self.description=metadata.description
+            self.description = metadata.description
         }
 
         pub fun getID(): UInt64 {
@@ -281,7 +281,7 @@ pub contract Webshot: NonFungibleToken {
         imgUrl: String,
         royalty: {String: Royalty}) : @Webshot.NFT {
 
-        let mint = Website.totalMintedWebshots[websiteId]! + UInt64(1)
+        let mint = Website.getTotalMintedWebshots(id: websiteId)! + UInt64(1)
 
         var newNFT <- create NFT(
             content: content,

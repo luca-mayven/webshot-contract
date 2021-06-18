@@ -125,8 +125,9 @@ pub contract Marketplace {
 
             let token <-self.withdraw(tokenId: tokenId)
 
-            for royalty in token.royalty.keys {
-                let royaltyData = token.royalty[royalty]!
+            let royalties = token.getRoyalty()
+            for royalty in royalties.keys {
+                let royaltyData = royalties[royalty]!
                 let amount = price * royaltyData.cut
                 let wallet = royaltyData.wallet.borrow()!
 

@@ -22,8 +22,8 @@ pub contract Website: NonFungibleToken {
     pub let CollectionPublicPath: PublicPath
 
     pub var totalSupply: UInt64
-    pub let totalMintedWebshots: { UInt64: UInt64}
-    pub let lastWebshotMintedAt: { UInt64: UFix64}
+    access(contract) let totalMintedWebshots: { UInt64: UInt64 }
+    access(contract) let lastWebshotMintedAt: { UInt64: UFix64 }
 
     pub event ContractInitialized()
     pub event Withdraw(id: UInt64, from: Address?)
@@ -179,8 +179,8 @@ pub contract Website: NonFungibleToken {
             self.description = description
             self.webshotMinInterval = webshotMinInterval
             self.isRecurring = isRecurring
-            self.totalMintedWebshots = Website.totalMintedWebshots[id]!
-            self.lastWebshotMintedAt = Website.lastWebshotMintedAt[id]!
+            self.totalMintedWebshots = Website.getTotalMintedWebshots(id: id)!
+            self.lastWebshotMintedAt = Website.getLastWebshotMintedAt(id: id)!
         }
     }
 
@@ -227,6 +227,21 @@ pub contract Website: NonFungibleToken {
         return nil
     }
 
+
+    pub fun getTotalMintedWebshots(id: UInt64) : UInt64? {
+        return Website.totalMintedWebshots[id]
+    }
+    pub fun getLastWebshotMintedAt(id: UInt64) : UFix64? {
+        return Website.lastWebshotMintedAt[id]
+    }
+
+    access(account) fun setTotalMintedWebshots(id: UInt64, value: UInt64) {
+        Website.totalMintedWebshots[id] = value
+    }
+    access(account) fun setLastWebshotMintedAt(id: UInt64, value: UFix64) {
+        Website.lastWebshotMintedAt[id] = value
+    }
+
     //This method can only be called from another contract in the same account. In Website case it is called from the AuctionAdmin that is used to administer the solution
     access(account) fun createWebsite(
         name: String,
@@ -248,8 +263,8 @@ pub contract Website: NonFungibleToken {
         )
         emit Created(id: newNFT.id, name: newNFT.name, url: newNFT.url)
 
-        Website.totalMintedWebshots[newNFT.id] = UInt64(0)
-        Website.lastWebshotMintedAt[newNFT.id] = UFix64(0)
+        Website.setTotalMintedWebshots(id: newNFT.id, value: UInt64(0))
+        Website.setLastWebshotMintedAt(id: newNFT.id, value: UFix64(0))
 
         return <- newNFT
     }
