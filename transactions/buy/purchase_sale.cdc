@@ -2,6 +2,7 @@
 //import FungibleToken from 0xee82856bf20e2aa6
 import FungibleToken from "../../contracts/FungibleToken.cdc"
 import NonFungibleToken from "../../contracts/NonFungibleToken.cdc"
+import FUSD from "../../contracts/FUSD.cdc"
 import Website from "../../contracts/Website.cdc"
 import Webshot from "../../contracts/Webshot.cdc"
 import Marketplace from "../../contracts/Marketplace.cdc"
@@ -14,11 +15,11 @@ transaction(saleAddress: Address, tokenId: UInt64, amount: UFix64) {
     // reference to the buyer's NFT collection where they
     // will store the bought NFT
 
-    let vaultCap: Capability<&{FungibleToken.Receiver}>
+    let vaultCap: Capability<&FUSD.Vault{FungibleToken.Receiver}>
     let collectionCap: Capability<&{Webshot.CollectionPublic}>
     // Vault that will hold the tokens that will be used
     // to buy the NFT
-    let temporaryVault: @FungibleToken.Vault
+    let temporaryVault: @FUSD.Vault
 
     prepare(account: AuthAccount) {
 
@@ -36,9 +37,9 @@ transaction(saleAddress: Address, tokenId: UInt64, amount: UFix64) {
 
         self.collectionCap = collectionCap
 
-        self.vaultCap = account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+        self.vaultCap = account.getCapability<&FUSD.Vault{FungibleToken.Receiver}>(/public/fusdReceiver)
 
-        let vaultRef = account.borrow<&FungibleToken.Vault>(from: /storage/flowTokenVault) ?? panic("Could not borrow owner's Vault reference")
+        let vaultRef = account.borrow<&FUSD.Vault>(from: /storage/fusdVault) ?? panic("Could not borrow owner's Vault reference")
 
         // withdraw tokens from the buyer's Vault
         self.temporaryVault <- vaultRef.withdraw(amount: amount)

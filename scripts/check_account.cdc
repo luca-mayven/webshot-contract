@@ -2,6 +2,7 @@
 //import FungibleToken from 0xee82856bf20e2aa6
 import FungibleToken from "../contracts/FungibleToken.cdc"
 import NonFungibleToken from "../contracts/NonFungibleToken.cdc"
+import FUSD from "../contracts/FUSD.cdc"
 import Website from "../contracts/Website.cdc"
 import Webshot from "../contracts/Webshot.cdc"
 import Marketplace from "../contracts/Marketplace.cdc"
@@ -11,6 +12,7 @@ pub struct AddressStatus {
 
   pub(set) var address:Address
   pub(set) var balance: UFix64
+  pub(set) var fusdBalance: UFix64
   pub(set) var webshotData: [Webshot.WebshotData]
   pub(set) var websiteData: [Website.WebsiteData]
   pub(set) var saleData: [Marketplace.SaleData]
@@ -18,6 +20,7 @@ pub struct AddressStatus {
   init (_ address:Address) {
     self.address=address
     self.balance= 0.0
+    self.fusdBalance= 0.0
     self.webshotData= []
     self.websiteData= []
     self.saleData = []
@@ -34,6 +37,9 @@ pub fun main(address:Address) : AddressStatus {
 
     if let vault = account.getCapability(/public/flowTokenBalance).borrow<&{FungibleToken.Balance}>() {
        status.balance = vault.balance
+    }
+    if let fusdVault = account.getCapability(/public/fusdBalance).borrow<&FUSD.Vault{FungibleToken.Balance}>(){
+        status.fusdBalance = fusdVault.balance
     }
 
     status.webshotData = Webshot.getWebshots(address: address)

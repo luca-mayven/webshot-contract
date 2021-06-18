@@ -3,6 +3,7 @@
 import FungibleToken from "../../contracts/FungibleToken.cdc"
 import FlowToken from "../../contracts/FlowToken.cdc"
 import NonFungibleToken from "../../contracts/NonFungibleToken.cdc"
+import FUSD from "../../contracts/FUSD.cdc"
 import Website from "../../contracts/Website.cdc"
 import Webshot from "../../contracts/Webshot.cdc"
 import Marketplace from "../../contracts/Marketplace.cdc"
@@ -23,7 +24,7 @@ transaction(
         let marketplaceCap = account.getCapability<&{Marketplace.SalePublic}>(Marketplace.CollectionPublicPath)
         // if sale collection is not created yet we make it.
         if !marketplaceCap.check() {
-             let wallet =  account.getCapability<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
+             let wallet =  account.getCapability<&FUSD.Vault{FungibleToken.Receiver}>(/public/fusdReceiver)
              let sale <- Marketplace.createSaleCollection(ownerVault: wallet)
 
             // store an empty NFT Collection in account storage
