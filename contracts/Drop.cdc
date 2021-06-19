@@ -111,7 +111,7 @@ pub contract Drop {
             self.expired = expired
             self.firstBidBlock = firstBidBlock
             self.settledAt = settledAt
-            self.active = !(expired || completed || UFix64(startTime) < getCurrentBlock().timestamp)
+            self.active = !(expired || completed)
         }
 
     }
