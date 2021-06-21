@@ -19,7 +19,7 @@ transaction(saleAddress: Address, tokenId: UInt64, amount: UFix64) {
     let collectionCap: Capability<&{Webshot.CollectionPublic}>
     // Vault that will hold the tokens that will be used
     // to buy the NFT
-    let temporaryVault: @FUSD.Vault
+    let temporaryVault: @FungibleToken.Vault
 
     prepare(account: AuthAccount) {
 
